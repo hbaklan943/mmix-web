@@ -287,12 +287,13 @@ function listOutputFiles(M) {
 }
 
 async function loadExample(name) {
-  for (const dir of ["examples", "../vendor"]) {
+  for (const dir of ["examples", "vendor", "../examples", "../vendor"]) {
     try {
       const res = await fetch(dir + "/" + name);
       if (!res.ok) continue;
       currentStem = name.replace(/\.mms$/, "");
       editor.setValue(await res.text());
+      console.log("loaded", name, "stem", currentStem, "from", dir);
       return;
     } catch (e) { /* try next dir */ }
   }
