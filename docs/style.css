@@ -1,0 +1,106 @@
+:root {
+  --bg: #16181d;
+  --fg: #d6d8dd;
+  --accent: #4f9cf9;
+  --panel: #1e2127;
+  --border: #2c3038;
+  font-family: system-ui, sans-serif;
+  color: var(--fg);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+h1 {
+  font-size: 18px;
+  margin: 0;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+.toolbar { display: flex; align-items: center; gap: 8px; flex: 1; }
+button {
+  background: var(--accent);
+  border: 0;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+button:disabled { opacity: 0.4; cursor: default; }
+.opt { font-size: 12px; color: #9aa0a8; display: inline-flex; align-items: center; gap: 4px; }
+.opt input { accent-color: var(--accent); }
+#status.error { color: #ff7b72; }
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+#editor-pane, #side-pane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+#editor-pane { border-right: 1px solid var(--border); }
+.CodeMirror {
+  height: 100%;
+  font: 14px/1.45 Consolas, monospace;
+  background: var(--bg);
+  color: var(--fg);
+}
+.CodeMirror-gutters { background: var(--panel); border-right: 1px solid var(--border); }
+.CodeMirror-linenumber { color: #6b7280; }
+.cm-s-default .cm-comment { color: #6b7280; font-style: italic; }
+.cm-s-default .cm-string { color: #a5d6ff; }
+.cm-s-default .cm-number { color: #79c0ff; }
+.cm-s-default .cm-variable-2 { color: #ffa657; }
+.pane-label {
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #9aa0a8;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.console {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 12px;
+  font: 13px/1.45 Consolas, monospace;
+  white-space: pre-wrap;
+}
+.console.err { color: #ff7b72; }
+.console + .pane-label + #stdin {
+  height: 22%;
+  background: var(--bg);
+  color: var(--fg);
+  border: 0;
+  outline: none;
+  resize: none;
+  padding: 8px 12px;
+  font: 13px/1.45 Consolas, monospace;
+  white-space: pre;
+}
+.regs { padding: 6px 12px; border-top: 1px solid var(--border); }
+.regs summary { cursor: pointer; font-size: 12px; color: var(--accent); }
+.mem-read { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+.mem-read input { flex: 1; background: var(--panel); color: var(--fg); border: 1px solid var(--border); padding: 4px 8px; font: 13px Consolas, monospace; border-radius: 4px; }
+.mem-read button { padding: 4px 10px; font-size: 12px; }
+#mem-result { font: 13px Consolas, monospace; color: var(--accent); }
+#reg-output { height: 220px; }
