@@ -1,0 +1,20 @@
+# artifacts
+build/
+tools/ctangle.exe
+tools/emsdk/
+
+# CWEB tangle outputs (regenerate with tools\build-*.ps1)
+vendor/*.c
+vendor/abstime.h
+vendor/abstime.exe
+vendor/empty.ch
+
+# tool outputs
+vendor/*.mmo
+vendor/*.mml
+vendor/*.out
+vendor/*.run
+*.lst
+
+# node
+node_modules/
