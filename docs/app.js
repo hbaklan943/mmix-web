@@ -81,17 +81,21 @@ function defineMmixalMode() {
   if (!window.CodeMirror) return;
   if (CodeMirror.modes && CodeMirror.modes.mmixal) return;
 
-  const opcodes = /^(?:TRAP|FCMP|FUN|FEQL|FADD|FIX|FSUB|FIXU|FLOT|FLOTI|FLOTU|FLOTUI|SFLOT|SFLOTI|SFLOTU|SFLOTUI|FMUL|FDIV|FSQRT|FREM|FINT|MUL|MULI|MULU|MULUI|DIV|DIVI|DIVU|DIVUI|ADD|ADDI|ADDU|ADDUI|SUB|SUBI|SUBU|SUBUI|2ADDU|2ADDUI|4ADDU|4ADDUI|8ADDU|8ADDUI|NEG|NEGI|NEGU|NEGUI|CMP|CMPI|CMPU|CMPUI|CSN|CSNI|CSZ|CSZI|CSP|CSPI|CSOD|CSODI|CSNN|CSNNI|CSNZ|CSNZI|CSNP|CSNPI|CSEV|CSEVI|ZSN|ZSNI|ZSZ|ZSZI|ZSP|ZSPI|ZSOD|ZSODI|ZSNN|ZSNNI|ZSNZ|ZSNZI|ZSNP|ZSNPI|ZSEV|ZSEVI|LDB|LDBI|LDBU|LDBUI|LDW|LDWI|LDWU|LDWUI|LDT|LDTI|LDTU|LDTUI|LDO|LDOI|LDOU|LDHT|LDHTI|CSWAP|CSWAPI|LDUNC|LDUNCI|LDVTS|LDVTSI|PRELD|PRELDI|PREGO|PREGOI|GO|GOI|STB|STBI|STBU|STBUI|STW|STWI|STWU|STWUI|STT|STTI|STTU|STTUI|STO|STOI|STOU|STOUI|STSF|STSFI|STHT|STHTI|STCO|STCOI|STUNC|STUNCI|SYNCD|SYNCDI|PREST|PRESTI|SYNCID|SYNCIDI|PUSHGO|PUSHGOI|OR|ORI|ORN|ORNI|NOR|NORI|XOR|XORI|AND|ANDI|ANDN|ANDNI|NAND|NANDI|NXOR|NXORI|BDIF|BDIFI|WDIF|WDIFI|TDIF|TDIFI|ODIF|ODIFI|MUX|MUXI|SADD|SADDI|MOR|MORI|MXOR|MXORI|SETH|SETMH|SETML|SETL|INCH|INCMH|INCML|INCL|ORH|ORMH|ORML|ORL|ANDNH|ANDNMH|ANDNML|ANDNL|JMP|JMPB|PUSHJ|PUSHJB|GETA|GETAB|PUT|PUTI|POP|RESUME|SAVE|UNSAVE|SYNC|SWYM|GET|TRIP|SET)\b/i;
+  const opcodes = /^(?:TRAP|FCMP|FUN|FEQL|FADD|FIX|FSUB|FIXU|FLOT|FLOTU|SFLOT|SFLOTU|FMUL|FCMPE|FUNE|FEQLE|FDIV|FSQRT|FREM|FINT|MUL|MULU|DIV|DIVU|ADD|ADDU|SUB|SUBU|2ADDU|4ADDU|8ADDU|16ADDU|CMP|CMPU|NEG|NEGU|SL|SLU|SR|SRU|BN|BZ|BP|BOD|BNN|BNZ|BNP|BEV|PBN|PBZ|PBP|PBOD|PBNN|PBNZ|PBNP|PBEV|CSN|CSZ|CSP|CSOD|CSNN|CSNZ|CSNP|CSEV|ZSN|ZSZ|ZSP|ZSOD|ZSNN|ZSNZ|ZSNP|ZSEV|LDB|LDBU|LDW|LDWU|LDT|LDTU|LDO|LDOU|LDSF|LDHT|CSWAP|LDUNC|LDVTS|PRELD|PREGO|GO|STB|STBU|STW|STWU|STT|STTU|STO|STOU|STSF|STHT|STCO|STUNC|SYNCD|PREST|SYNCID|PUSHGO|OR|ORN|NOR|XOR|AND|ANDN|NAND|NXOR|BDIF|WDIF|TDIF|ODIF|MUX|SADD|MOR|MXOR|SETH|SETMH|SETML|SETL|INCH|INCMH|INCML|INCL|ORH|ORMH|ORML|ORL|ANDNH|ANDNMH|ANDNML|ANDNL|JMP|PUSHJ|GETA|PUT|POP|RESUME|SAVE|UNSAVE|SYNC|SWYM|GET|TRIP|SET|LDA)\b/i;
   const pseudoOps = /^(?:IS|LOC|BYTE|WYDE|TETRA|OCTA|PREFIX|GREG|LOCAL|BSPEC|ESPEC)\b/i;
   const specialRegs = /^(?:r[A-Z]|rBB|rTT|rWW|rXX|rYY|rZZ)\b/;
-  const trapConsts = /^(?:Halt|Fopen|Fclose|Fread|Fgets|Fgetws|Fwrite|Fputs|Fputws|Fseek|Ftell|StdIn|StdOut|StdErr|TextRead|TextWrite|BinaryRead|BinaryWrite|BinaryReadWrite)\b/;
+  const trapConsts = /^(?:Halt|Fopen|Fclose|Fread|Fgets|Fgetws|Fwrite|Fputs|Fputws|Fseek|Ftell|StdIn|StdOut|StdErr|TextRead|TextWrite|BinaryRead|BinaryWrite|BinaryReadWrite|Data_Segment|Pool_Segment|Stack_Segment)\b/;
 
   CodeMirror.defineSimpleMode("mmixal", {
     start: [
+      { regex: /^\s*[*].*/, token: "comment" },
       { regex: /%.*/, token: "comment" },
       { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
-      { regex: /#?[0-9a-fA-F]+(?:\.[0-9a-fA-F]+)?/, token: "number" },
-      { regex: /\$[0-9]+/, token: "variable-2" },
+      { regex: /'(?:[^'\\]|\\.)*'/, token: "string" },
+      { regex: /#[0-9a-fA-F]+(?:\.[0-9a-fA-F]+)?\b/, token: "number" },
+      { regex: /\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/, token: "number" },
+      { regex: /\b\d+[FfBbHh]\b/, token: "number" },
+      { regex: /\$[0-9]+\b/, token: "variable-2" },
       { regex: specialRegs, token: "variable-2" },
       { regex: opcodes, token: "keyword" },
       { regex: pseudoOps, token: "builtin" },
