@@ -170,6 +170,8 @@ async function evalJS(cdp, expr) {
     if (ex.expect && !sim.includes(ex.expect)) fail(`${ex.name}: expected "${ex.expect}" in output`);
     const regs = await evalJS(cdp, "document.getElementById('reg-output').textContent");
     if (!/inst_ptr/.test(regs)) fail(`${ex.name}: registers not populated`);
+    const lstDisabled = await evalJS(cdp, "document.getElementById('btn-download-lst').disabled");
+    if (lstDisabled) fail(`${ex.name}: listing button still disabled`);
   }
 
   const msgs = await evalJS(cdp, "window.__msgs");

@@ -17,6 +17,7 @@ let MMIXAL = null; // initMmixal constructor from wasm/mmixal.js
 let MMIX = null;   // initMmix constructor from wasm/mmix.js
 let currentMmo = null;
 let currentStem = "prog"; // file stem: example name or "prog" for ad-hoc edits
+let currentListing = null;
 let lastModule = null;
 let editor = null; // CodeMirror instance
 let uploadedFiles = new Map();
@@ -162,7 +163,9 @@ async function assemble() {
   const stem = currentStem;
   const asmOut = $("asm-output");
   $("btn-run").disabled = true;
-  currentMmo = null;
+  $("btn-download-mmo").disabled = true;
+  $("btn-download-lst").disabled = true;
+  currentListing = null;
   asmOut.textContent = "";
   asmOut.className = "console";
   asmOut.__cls = "";
@@ -170,7 +173,7 @@ async function assemble() {
   (editor.getAllMarks() || []).forEach((m) => m.clear());
   status("assembling…");
   try {
-    const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", "-x", "-b", "250", stem + ".mms"], [
+    const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", "-x", "-b", "250", "-l", stem + ".lst", stem + ".mms"], [
       { name: stem + ".mms", data: src, opts: { encoding: "utf8" } },
     ], null, $("stdin").value);
     appendTo(asmOut, stderr + stdout, stderr.trim() ? "err" : "");
@@ -200,6 +203,10 @@ async function assemble() {
       $("btn-run").disabled = !MMIX;
       status(`assembled ${mmo.length} bytes - Ready`);
       updateHash();
+      try { currentListing = new TextDecoder().decode(FS.readFile(stem + ".lst")); } catch (e) { currentListing = null; }
+      $("btn-run").disabled = false;
+      $("btn-download-mmo").disabled = false;
+      $("btn-download-lst").disabled = !currentListing;
     } else {
       status("assembler error", true);
     }
@@ -280,6 +287,22 @@ async function boot() {
   });
   $("btn-assemble").onclick = assemble;
   $("btn-run").onclick = run;
+  $("btn-download-mmo").onclick = () => {
+    if (!currentMmo) return;
+    const blob = new Blob([currentMmo]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = currentStem + ".mmo"; a.click();
+    URL.revokeObjectURL(url);
+  };
+  $("btn-download-lst").onclick = () => {
+    if (!currentListing) return;
+    const blob = new Blob([currentListing], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = currentStem + ".lst"; a.click();
+    URL.revokeObjectURL(url);
+  };
   $("btn-share").onclick = async () => {
     updateHash();
     const url = location.href;
