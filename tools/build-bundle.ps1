@@ -9,4 +9,5 @@ if (-not $SkipWasm) {
 }
 if (Test-Path $docs) { Remove-Item $docs -Recurse -Force }
 Copy-Item (Join-Path $repo "web") $docs -Recurse
+New-Item -ItemType File -Path (Join-Path $docs ".nojekyll") -Force | Out-Null
 Write-Host "BUNDLE OK -> $docs (GitHub Pages: master /docs)"
