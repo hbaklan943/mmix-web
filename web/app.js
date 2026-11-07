@@ -450,8 +450,8 @@ async function boot() {
         }
         const cursor = cm.getCursor();
         const col = cursor.ch;
-        // MMIXAL layout matching hello.mms: Col 8 (offset 7), Col 14 (offset 13), Col 31 (offset 30)
-        const STOPS = [7, 13, 30];
+        // Standard 8-column multiples: 8 (Opcode), 16 (Operands), 32 (Comment)
+        const STOPS = [8, 16, 32];
         let target = STOPS.find((s) => s > col);
         if (!target) target = Math.floor(col / 8 + 1) * 8;
         cm.replaceSelection(" ".repeat(target - col));
@@ -464,7 +464,7 @@ async function boot() {
         const cursor = cm.getCursor();
         const col = cursor.ch;
         const line = cm.getLine(cursor.line);
-        const STOPS = [0, 7, 13, 30];
+        const STOPS = [0, 8, 16, 32];
         let prev = 0;
         for (const s of STOPS) {
           if (s < col) prev = s;
