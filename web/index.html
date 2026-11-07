@@ -12,7 +12,7 @@
 <header>
   <h1>MMIX</h1>
   <div class="toolbar">
-    <select id="examples" title="example programs"></select>
+    <select id="examples" title="Example programs"></select>
     <button id="btn-assemble" disabled>Assemble</button>
     <button id="btn-run" disabled>Run</button>
     <button id="btn-download-mmo" disabled title="Download .mmo object file">.mmo</button>
@@ -26,34 +26,106 @@
     <span id="status"></span>
   </div>
 </header>
-<main>
-  <section id="editor-pane">
-    <div id="tab-bar" class="tab-bar">
-      <button id="btn-new-tab" title="New tab">+</button>
-    </div>
-    <textarea id="editor" spellcheck="false" placeholder="Loading editor…"></textarea>
-  </section>
-  <section id="side-pane">
-    <div class="pane-label">Assembler messages</div>
-    <div id="asm-output" class="console"></div>
-    <div class="pane-label">Simulator output</div>
-    <div id="sim-output" class="console"></div>
-    <details id="regs" class="regs">
-      <summary>Registers (after run)</summary>
-      <div class="mem-read">
-        <input id="mem-addr" spellcheck="false" placeholder="read tetra at 0x…">
-        <button id="btn-mem" disabled>Read</button>
-        <span id="mem-result"></span>
+<main id="app-main">
+  <!-- Top Split Area: Editor (Left) & Registers (Right) -->
+  <div id="top-area">
+    <section id="editor-pane">
+      <div id="tab-bar" class="tab-bar">
+        <button id="btn-new-tab" title="New tab">+</button>
       </div>
-      <pre id="reg-output" class="console"></pre>
-    </details>
-    <details id="files" class="regs">
-      <summary>Files in virtual FS (after run)</summary>
-      <input type="file" id="file-upload" multiple>
+      <textarea id="editor" spellcheck="false" placeholder="Loading editor…"></textarea>
+    </section>
+
+    <!-- Resizable Vertical Splitter -->
+    <div id="v-splitter" class="splitter v-splitter" title="Drag left/right to resize"></div>
+
+    <!-- MMIXVD-style Registers Pane -->
+    <section id="regs-pane">
+      <div class="panel-header">
+        <span class="panel-title">REGISTERS</span>
+        <div class="reg-tools">
+          <button id="btn-reg-hex" class="mini-btn active" title="Display in Hexadecimal">Hex</button>
+          <button id="btn-reg-dec" class="mini-btn" title="Display in Decimal">Dec</button>
+          <button id="btn-reg-filter" class="mini-btn active" title="Show only non-zero / active registers">Active Only</button>
+        </div>
+      </div>
+      <!-- Hidden pre to keep 100% backward compatibility with test runners -->
+      <pre id="reg-output" class="hidden-compat"></pre>
+      <div id="regs-list" class="regs-list">
+        <div class="regs-empty">Registers will populate after simulation run.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Resizable Horizontal Splitter -->
+  <div id="h-splitter" class="splitter h-splitter" title="Drag up/down to resize"></div>
+
+  <!-- Bottom Area: MMIXVD Multi-Tab Inspector -->
+  <section id="bottom-pane">
+    <div class="bottom-tabs-bar">
+      <button class="bottom-tab active" data-tab="tab-sim">🖥️ Simulator Output <span id="sim-badge" class="badge"></span></button>
+      <button class="bottom-tab" data-tab="tab-speicher">🧠 Speicher (Memory)</button>
+      <button class="bottom-tab" data-tab="tab-asm">📋 Assembler Messages <span id="asm-badge" class="badge"></span></button>
+      <button class="bottom-tab" data-tab="tab-stdin">📥 Program Input (stdin)</button>
+      <button class="bottom-tab" data-tab="tab-files">📁 Files (Virtual FS)</button>
+    </div>
+
+    <!-- Tab 1: Simulator Output -->
+    <div id="tab-sim" class="bottom-tab-content active">
+      <div id="sim-output" class="console"></div>
+    </div>
+
+    <!-- Tab 2: Speicher (Memory Inspector) -->
+    <div id="tab-speicher" class="bottom-tab-content">
+      <div class="speicher-toolbar">
+        <div class="speicher-nav">
+          <label class="speicher-label">Go to:
+            <input id="mem-addr" spellcheck="false" placeholder="0x0000000000000100" value="0x0000000000000100">
+          </label>
+          <button id="btn-mem">Go</button>
+          <button id="btn-mem-prev" title="Previous 64 bytes">◀ -64B</button>
+          <button id="btn-mem-next" title="Next 64 bytes">+64B ▶</button>
+        </div>
+        <div class="speicher-presets">
+          <span class="label">Presets:</span>
+          <button class="preset-btn" data-addr="0x100">Code (#100)</button>
+          <button class="preset-btn" data-addr="0x2000000000000000">Data_Segment</button>
+          <button class="preset-btn" data-addr="0x4000000000000000">Pool</button>
+          <button class="preset-btn" data-addr="0x6000000000000000">Stack</button>
+        </div>
+        <div class="speicher-modes">
+          <button id="btn-mem-mode-hexascii" class="mini-btn active">Hex + ASCII</button>
+          <button id="btn-mem-mode-ascii" class="mini-btn">ASCII</button>
+          <button id="btn-mem-mode-octa" class="mini-btn">OCTA</button>
+        </div>
+        <span id="mem-result" class="mem-status"></span>
+      </div>
+      <div id="speicher-dump" class="speicher-dump">
+        <div class="speicher-empty">Simülasyon çalıştırıldığında bellek görüntülenecektir.</div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Assembler Messages -->
+    <div id="tab-asm" class="bottom-tab-content">
+      <div id="asm-output" class="console"></div>
+    </div>
+
+    <!-- Tab 4: Program Input (stdin) -->
+    <div id="tab-stdin" class="bottom-tab-content">
+      <div class="stdin-helper">
+        <span>Programınız standart girdiden okuma yapıyorsa (ör. <code>TRAP 0,Fgets,StdIn</code> veya <code>stdin-demo.mms</code>), girdiyi buraya yazın. Program çalıştırıldığında bu girdi aktarılır:</span>
+      </div>
+      <textarea id="stdin" spellcheck="false" placeholder="Program standart girdisi (stdin) — Örn: hello from stdin"></textarea>
+    </div>
+
+    <!-- Tab 5: Virtual FS Files -->
+    <div id="tab-files" class="bottom-tab-content">
+      <div class="files-helper">
+        <span>Sanal dosya sistemine dosya yükleyin veya programın ürettiği dosyaları indirin:</span>
+        <input type="file" id="file-upload" multiple>
+      </div>
       <div id="file-list" class="console"></div>
-    </details>
-    <div class="pane-label">Program input (stdin)</div>
-    <textarea id="stdin" spellcheck="false" placeholder="Optional — fed to the program as standard input"></textarea>
+    </div>
   </section>
 </main>
 <script src="vendor/codemirror/codemirror.min.js"></script>

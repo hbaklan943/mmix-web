@@ -65,17 +65,25 @@ const SPECIAL_NAMES = {
   253: "rA", 254: "rJ", 255: "rBB",
 };
 
-let MMIXAL = null; // initMmixal constructor from wasm/mmixal.js
-let MMIX = null;   // initMmix constructor from wasm/mmix.js
+let MMIXAL = null;
+let MMIX = null;
 let currentMmo = null;
-let currentStem = "prog"; // file stem: example name or "prog" for ad-hoc edits
+let currentStem = "prog";
 let currentListing = null;
 let lastModule = null;
-let editor = null; // CodeMirror instance
+let editor = null;
 let uploadedFiles = new Map();
 let tabs = [{ name: "untitled.mms", content: "", stem: "untitled", mmo: null, listing: null }];
 let activeTab = 0;
 let suppressAutoRun = false;
+
+// MMIXVD state: registers & memory inspector
+let regFormat = "hex"; // "hex" | "dec"
+let regFilter = "active"; // "active" | "all"
+let prevRegMap = new Map();
+let currentRegsList = [];
+let speicherMode = "hexascii"; // "hexascii" | "ascii" | "octa"
+let currentSpeicherAddr = 0x100n;
 
 function defineMmixalMode() {
   if (!window.CodeMirror) return;
@@ -130,8 +138,6 @@ function status(text, isError) {
 }
 
 /* ---------- wasm module driver ---------- */
-/* Runs one tool pristine each time. files: [{name, data, opts}].
-   Returns { stdout, stderr, rc, FS, module } */
 function runTool(Init, args, files, onOut, stdinText) {
   return new Promise((resolve, reject) => {
     let stdout = "";
@@ -155,7 +161,6 @@ function runTool(Init, args, files, onOut, stdinText) {
         resolve({ stdout, stderr, rc, FS: M.FS, module: M });
       } catch (e) {
         if (e && typeof e.status === "number") {
-          // normal nonzero exit (e.g. mmixal reporting errors)
           resolve({ stdout, stderr, rc: e.status, FS: M.FS, module: M });
         } else {
           reject(e);
@@ -285,7 +290,6 @@ async function assemble() {
       { name: stem + ".mms", data: src, opts: { encoding: "utf8" } },
     ], null, $("stdin").value);
     appendTo(asmOut, stderr + stdout, stderr.trim() ? "err" : "");
-    // inline error markers
     const errLines = new Set();
     const re = /line\s+(\d+)/gi;
     let m;
@@ -304,7 +308,7 @@ async function assemble() {
     let mmo = null;
     try {
       mmo = FS.readFile(stem + ".mmo");
-    } catch (e) { /* assembler errors: no output */ }
+    } catch (e) { /* assembler errors */ }
     if (mmo) {
       currentMmo = mmo;
       if (tabs[activeTab]) tabs[activeTab].mmo = mmo;
@@ -317,10 +321,12 @@ async function assemble() {
       $("btn-download-lst").disabled = !currentListing;
     } else {
       status("assembler error", true);
+      switchBottomTab("tab-asm");
     }
   } catch (e) {
     appendTo(asmOut, String(e), "err");
     status("assembler crashed", true);
+    switchBottomTab("tab-asm");
   }
 }
 
@@ -333,6 +339,7 @@ async function run() {
   simOut.__cls = "";
   status("running…");
   $("btn-run").disabled = true;
+  switchBottomTab("tab-sim");
   try {
     const trace = $("opt-trace").checked;
     const profile = $("opt-profile").checked;
@@ -348,7 +355,11 @@ async function run() {
     const { stdout, stderr, module: M } = await runTool(MMIX, args, files, null, $("stdin").value);
     appendTo(simOut, stdout, "");
     if (stderr.trim()) appendTo(simOut, stderr, "err");
-    if (M) { populateRegisters(M); listOutputFiles(M); }
+    if (M) {
+      populateRegisters(M);
+      listOutputFiles(M);
+      renderSpeicher();
+    }
     status("done");
   } catch (e) {
     appendTo(simOut, String(e), "err");
@@ -356,6 +367,339 @@ async function run() {
   } finally {
     $("btn-run").disabled = false;
   }
+}
+
+/* ---------- MMIXVD: Resizable Splitters ---------- */
+function initSplitters() {
+  const vSplitter = $("v-splitter");
+  const hSplitter = $("h-splitter");
+  const topArea = $("top-area");
+  const regsPane = $("regs-pane");
+  const bottomPane = $("bottom-pane");
+  const main = $("app-main");
+
+  // Vertical splitter (left: editor, right: registers)
+  let isDraggingV = false;
+  vSplitter.addEventListener("mousedown", (e) => {
+    isDraggingV = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  // Horizontal splitter (top: editor+regs, bottom: inspector)
+  let isDraggingH = false;
+  hSplitter.addEventListener("mousedown", (e) => {
+    isDraggingH = true;
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (isDraggingV) {
+      const topRect = topArea.getBoundingClientRect();
+      const newWidth = topRect.right - e.clientX;
+      if (newWidth >= 160 && newWidth <= topRect.width - 200) {
+        regsPane.style.width = newWidth + "px";
+        regsPane.style.flex = "none";
+        if (editor) editor.refresh();
+      }
+    }
+    if (isDraggingH) {
+      const mainRect = main.getBoundingClientRect();
+      const newHeight = mainRect.bottom - e.clientY;
+      if (newHeight >= 100 && newHeight <= mainRect.height - 120) {
+        bottomPane.style.height = newHeight + "px";
+        bottomPane.style.flex = "none";
+        if (editor) editor.refresh();
+      }
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isDraggingV || isDraggingH) {
+      isDraggingV = false;
+      isDraggingH = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      if (editor) editor.refresh();
+    }
+  });
+}
+
+/* ---------- MMIXVD: Bottom Inspector Tabs ---------- */
+function initBottomTabs() {
+  const tabBtns = document.querySelectorAll(".bottom-tab");
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      switchBottomTab(btn.dataset.tab);
+    });
+  });
+}
+
+function switchBottomTab(tabId) {
+  const tabBtns = document.querySelectorAll(".bottom-tab");
+  const contents = document.querySelectorAll(".bottom-tab-content");
+  tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
+  contents.forEach((c) => c.classList.toggle("active", c.id === tabId));
+  if (tabId === "tab-speicher") {
+    renderSpeicher();
+  }
+}
+
+/* ---------- MMIXVD: Register Inspector ---------- */
+function initRegistersControls() {
+  $("btn-reg-hex").onclick = () => {
+    regFormat = "hex";
+    $("btn-reg-hex").classList.add("active");
+    $("btn-reg-dec").classList.remove("active");
+    renderRegisters();
+  };
+  $("btn-reg-dec").onclick = () => {
+    regFormat = "dec";
+    $("btn-reg-dec").classList.add("active");
+    $("btn-reg-hex").classList.remove("active");
+    renderRegisters();
+  };
+  $("btn-reg-filter").onclick = () => {
+    regFilter = regFilter === "active" ? "all" : "active";
+    $("btn-reg-filter").classList.toggle("active", regFilter === "active");
+    $("btn-reg-filter").textContent = regFilter === "active" ? "Active Only" : "All 256";
+    renderRegisters();
+  };
+}
+
+function populateRegisters(M) {
+  lastModule = M;
+  const ptr = M._mmix_get_g_ptr();
+  const view = new DataView(M.HEAPU8.buffer);
+  const ipPtr = M._mmix_get_inst_ptr_addr();
+  const ipLo = view.getUint32(ipPtr, true);
+  const ipHi = view.getUint32(ipPtr + 4, true);
+
+  const ipVal = (BigInt(ipHi) << 32n) | BigInt(ipLo);
+  const newRegs = [];
+
+  // Special register inst_ptr
+  newRegs.push({
+    name: "inst_ptr",
+    hi: ipHi,
+    lo: ipLo,
+    val: ipVal,
+    isSpecial: true,
+  });
+
+  // 256 general & special architectural registers
+  for (let i = 0; i <= 255; i++) {
+    const off = ptr + i * 8;
+    const lo = view.getUint32(off, true);
+    const hi = view.getUint32(off + 4, true);
+    const val = (BigInt(hi) << 32n) | BigInt(lo);
+    const name = SPECIAL_NAMES[i] || `$${i}`;
+    newRegs.push({
+      name,
+      num: i,
+      hi,
+      lo,
+      val,
+      isSpecial: !!SPECIAL_NAMES[i],
+    });
+  }
+
+  // Populate #reg-output for 100% test compatibility
+  const compatLines = ["inst_ptr = 0x" + ipHi.toString(16).padStart(8, "0") + ipLo.toString(16).padStart(8, "0"), ""];
+  for (let i = 255; i >= 0; i--) {
+    const off = ptr + i * 8;
+    const lo = view.getUint32(off, true);
+    const hi = view.getUint32(off + 4, true);
+    const name = SPECIAL_NAMES[i] ? "  " + SPECIAL_NAMES[i] : "   $" + i;
+    compatLines.push(name.padEnd(8) + " = 0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0"));
+  }
+  $("reg-output").textContent = compatLines.join("\n");
+  $("btn-mem").disabled = false;
+
+  currentRegsList = newRegs;
+  renderRegisters();
+}
+
+function renderRegisters() {
+  const container = $("regs-list");
+  if (!currentRegsList.length) return;
+  container.innerHTML = "";
+
+  const formatVal = (val, hi, lo) => {
+    if (regFormat === "dec") {
+      const signed = BigInt.asIntN(64, val);
+      return signed.toString(10);
+    }
+    // hex (MMIXVD 16-hex format)
+    return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
+  };
+
+  const createRow = (item) => {
+    const row = document.createElement("div");
+    const prev = prevRegMap.get(item.name);
+    const changed = prev !== undefined && prev !== item.val;
+    row.className = "reg-row" + (item.isSpecial ? " special" : "") + (changed ? " changed" : "");
+    const nameEl = document.createElement("span");
+    nameEl.className = "reg-name";
+    nameEl.textContent = item.name;
+    const valEl = document.createElement("span");
+    valEl.className = "reg-val";
+    valEl.textContent = formatVal(item.val, item.hi, item.lo);
+    row.appendChild(nameEl);
+    row.appendChild(valEl);
+    return row;
+  };
+
+  // 1) Active/Special registers
+  const specialSection = document.createElement("div");
+  specialSection.className = "reg-section-title";
+  specialSection.textContent = "SPECIAL REGISTERS & POINTERS";
+  container.appendChild(specialSection);
+
+  for (const item of currentRegsList) {
+    if (item.isSpecial) {
+      if (regFilter === "active" && item.val === 0n && item.name !== "inst_ptr") continue;
+      container.appendChild(createRow(item));
+    }
+  }
+
+  // 2) General registers ($0..$255)
+  const genSection = document.createElement("div");
+  genSection.className = "reg-section-title";
+  genSection.textContent = "GENERAL REGISTERS ($0 .. $255)";
+  container.appendChild(genSection);
+
+  let genCount = 0;
+  for (const item of currentRegsList) {
+    if (!item.isSpecial) {
+      if (regFilter === "active" && item.val === 0n) continue;
+      container.appendChild(createRow(item));
+      genCount++;
+    }
+  }
+
+  if (genCount === 0 && regFilter === "active") {
+    const emptyRow = document.createElement("div");
+    emptyRow.className = "regs-empty";
+    emptyRow.textContent = "(All general registers are zero)";
+    container.appendChild(emptyRow);
+  }
+
+  // Update prevRegMap
+  for (const item of currentRegsList) {
+    prevRegMap.set(item.name, item.val);
+  }
+}
+
+/* ---------- MMIXVD: Speicher (Memory Viewer) ---------- */
+function parseAddress(str) {
+  if (!str) return 0x100n;
+  const s = str.trim().toLowerCase();
+  if (s === "data_segment" || s === "data") return 0x2000000000000000n;
+  if (s === "pool_segment" || s === "pool") return 0x4000000000000000n;
+  if (s === "stack_segment" || s === "stack") return 0x6000000000000000n;
+  if (s === "code") return 0x100n;
+  if (s.startsWith("#")) return BigInt("0x" + s.slice(1));
+  if (s.startsWith("0x")) return BigInt(s);
+  try {
+    return BigInt(s);
+  } catch (e) {
+    return 0x100n;
+  }
+}
+
+function initSpeicherControls() {
+  $("btn-mem").onclick = () => {
+    currentSpeicherAddr = parseAddress($("mem-addr").value);
+    renderSpeicher();
+  };
+  $("mem-addr").onkeydown = (e) => {
+    if (e.key === "Enter") {
+      currentSpeicherAddr = parseAddress($("mem-addr").value);
+      renderSpeicher();
+    }
+  };
+  $("btn-mem-prev").onclick = () => {
+    if (currentSpeicherAddr >= 64n) currentSpeicherAddr -= 64n;
+    $("mem-addr").value = "0x" + currentSpeicherAddr.toString(16).padStart(16, "0");
+    renderSpeicher();
+  };
+  $("btn-mem-next").onclick = () => {
+    currentSpeicherAddr += 64n;
+    $("mem-addr").value = "0x" + currentSpeicherAddr.toString(16).padStart(16, "0");
+    renderSpeicher();
+  };
+
+  document.querySelectorAll(".preset-btn").forEach((btn) => {
+    btn.onclick = () => {
+      currentSpeicherAddr = parseAddress(btn.dataset.addr);
+      $("mem-addr").value = "0x" + currentSpeicherAddr.toString(16).padStart(16, "0");
+      renderSpeicher();
+    };
+  });
+
+  const modes = [
+    { id: "btn-mem-mode-hexascii", mode: "hexascii" },
+    { id: "btn-mem-mode-ascii", mode: "ascii" },
+    { id: "btn-mem-mode-octa", mode: "octa" },
+  ];
+  modes.forEach(({ id, mode }) => {
+    $(id).onclick = () => {
+      speicherMode = mode;
+      modes.forEach((m) => $(m.id).classList.toggle("active", m.mode === mode));
+      renderSpeicher();
+    };
+  });
+}
+
+function renderSpeicher() {
+  const container = $("speicher-dump");
+  if (!lastModule) {
+    container.innerHTML = '<div class="speicher-empty">Simülasyon çalıştırıldığında bellek görüntülenecektir.</div>';
+    return;
+  }
+
+  // Align to 16-byte boundary
+  const base = currentSpeicherAddr & ~15n;
+  $("mem-addr").value = "0x" + base.toString(16).padStart(16, "0");
+
+  const lines = [];
+  // Render 64 bytes (4 rows of 16 bytes)
+  for (let r = 0; r < 4; r++) {
+    const rowAddr = base + BigInt(r * 16);
+    const bytes = [];
+    for (let t = 0; t < 4; t++) {
+      const tetraAddr = rowAddr + BigInt(t * 4);
+      const h = Number((tetraAddr >> 32n) & 0xffffffffn);
+      const l = Number(tetraAddr & 0xffffffffn);
+      const val = (lastModule._mmix_mem_read_tetra(h, l) >>> 0);
+      bytes.push((val >> 24) & 0xff);
+      bytes.push((val >> 16) & 0xff);
+      bytes.push((val >> 8) & 0xff);
+      bytes.push(val & 0xff);
+    }
+
+    const addrStr = "0x" + rowAddr.toString(16).padStart(16, "0") + ":";
+
+    if (speicherMode === "ascii") {
+      const ascii = bytes.map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : "·")).join("");
+      lines.push(`${addrStr}  ${ascii}`);
+    } else if (speicherMode === "octa") {
+      const octa1 = bytes.slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const octa2 = bytes.slice(8, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+      lines.push(`${addrStr}  ${octa1}  ${octa2}`);
+    } else {
+      // Hex + ASCII
+      const hexPart1 = bytes.slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join(" ");
+      const hexPart2 = bytes.slice(8, 16).map((b) => b.toString(16).padStart(2, "0")).join(" ");
+      const ascii = bytes.map((b) => (b >= 32 && b <= 126 ? String.fromCharCode(b) : ".")).join("");
+      lines.push(`${addrStr}  ${hexPart1}   ${hexPart2}  |  ${ascii}`);
+    }
+  }
+
+  container.innerHTML = `<pre class="speicher-code">${lines.join("\n")}</pre>`;
+  $("mem-result").textContent = "Read 64 bytes at 0x" + base.toString(16);
 }
 
 /* ---------- boot ---------- */
@@ -399,7 +743,6 @@ async function boot() {
     $("btn-download-lst").disabled = true;
     setEditorContent(tabs[activeTab].content);
     renderTabs();
-    status("loaded " + f.name);
   });
 
   $("btn-assemble").onclick = assemble;
@@ -426,16 +769,6 @@ async function boot() {
     try { await navigator.clipboard.writeText(url); status("share link copied"); }
     catch (e) { window.prompt("Copy this share link:", url); }
   };
-  $("btn-mem").onclick = () => {
-    if (!lastModule) return;
-    try {
-      const a = BigInt($("mem-addr").value.trim());
-      const tet = lastModule._mmix_mem_read_tetra(Number((a >> 32n) & 0xffffffffn), Number(a & 0xffffffffn));
-      $("mem-result").textContent = "0x" + tet.toString(16).padStart(8, "0");
-    } catch (e) {
-      $("mem-result").textContent = "bad address";
-    }
-  };
 
   defineMmixalMode();
   editor = CodeMirror.fromTextArea($("editor"), {
@@ -454,7 +787,6 @@ async function boot() {
         }
         const cursor = cm.getCursor();
         const col = cursor.ch;
-        // Standard 8-column multiples: 8 (Opcode), 16 (Operands), 32 (Comment)
         const STOPS = [8, 16, 32];
         let target = STOPS.find((s) => s > col);
         if (!target) target = Math.floor(col / 8 + 1) * 8;
@@ -505,6 +837,11 @@ async function boot() {
     autoTimer = setTimeout(() => { assemble().then(() => { if (currentMmo) run(); }); }, 900);
   });
 
+  initSplitters();
+  initBottomTabs();
+  initRegistersControls();
+  initSpeicherControls();
+
   window.loadExample = loadExample;
   try {
     await loadScript("wasm/mmixal.js");
@@ -518,27 +855,6 @@ async function boot() {
   $("btn-assemble").disabled = false;
   status("toolchain ready");
   await loadExample("hello.mms");
-}
-
-function populateRegisters(M) {
-  lastModule = M;
-  const ptr = M._mmix_get_g_ptr();
-  const view = new DataView(M.HEAPU8.buffer);
-  const ipPtr = M._mmix_get_inst_ptr_addr();
-  const ipLo = view.getUint32(ipPtr, true);
-  const ipHi = view.getUint32(ipPtr + 4, true);
-  const lines = [];
-  lines.push("inst_ptr = 0x" + ipHi.toString(16).padStart(8, "0") + ipLo.toString(16).padStart(8, "0"));
-  lines.push("");
-  for (let i = 255; i >= 0; i--) {
-    const off = ptr + i * 8;
-    const lo = view.getUint32(off, true);
-    const hi = view.getUint32(off + 4, true);
-    const name = SPECIAL_NAMES[i] ? "  " + SPECIAL_NAMES[i] : "   $" + i;
-    lines.push(name.padEnd(8) + " = 0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0"));
-  }
-  $("reg-output").textContent = lines.join("\n");
-  $("btn-mem").disabled = false;
 }
 
 function encodeProgram(src) {
@@ -560,10 +876,6 @@ function applyTheme(light) {
   const btn = $("btn-theme");
   if (btn) btn.textContent = light ? "☀️ Light" : "🌙 Dark";
   try { localStorage.setItem("mmix-theme", light ? "light" : "dark"); } catch (e) {}
-}
-
-function hex64(h, l) {
-  return h.toString(16).padStart(8, "0") + l.toString(16).padStart(8, "0");
 }
 
 function listOutputFiles(M) {
