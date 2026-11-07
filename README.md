@@ -39,7 +39,7 @@ build\native\mmix.exe hello
 # -> hello, world
 ```
 
-## Status
+## Live\n\n- GitHub Pages: https://hbaklan943.github.io/mmix-web/\n- Vercel: https://docs-psi-fawn.vercel.app/\n\n## Status
 
 - [x] Bootstrap ctangle from cweb, tangle MMIXware to C
 - [x] Native mmixal + mmix build (Windows/MinGW), hello.mms parity test
