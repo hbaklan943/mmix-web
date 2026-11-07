@@ -89,7 +89,7 @@ main {
 .tab .close { cursor: pointer; color: #6b7280; font-weight: bold; }
 .tab .close:hover { color: #ff7b72; }
 #btn-new-tab { background: var(--panel); border: 1px solid var(--border); color: var(--accent); padding: 2px 8px; font-size: 14px; border-radius: 4px; cursor: pointer; }
-.CodeMirror { height: calc(100% - 36px); }
+.CodeMirror { flex: 1 1 auto; min-height: 0; height: 100%; }
 .CodeMirror-gutters { background: var(--panel) !important; border-right: 1px solid var(--border); }
 .CodeMirror-linenumber { color: #6b7280; }
 .CodeMirror-gutter.errors { width: 14px; }

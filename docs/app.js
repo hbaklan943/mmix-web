@@ -252,8 +252,8 @@ async function run() {
 
 /* ---------- boot ---------- */
 async function boot() {
-async function boot() {
   const exSel = $("examples");
+  for (const name of EXAMPLES) {
     const opt = document.createElement("option");
     opt.textContent = name;
     opt.value = name;
