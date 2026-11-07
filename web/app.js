@@ -9,6 +9,7 @@ const EXAMPLES = ["hello.mms", "fib.mms", "primes.mms", "sort.mms", "inout.mms",
 let MMIXAL = null; // initMmixal constructor from wasm/mmixal.js
 let MMIX = null;   // initMmix constructor from wasm/mmix.js
 let currentMmo = null;
+let currentStem = "prog"; // file stem: example name or "prog" for ad-hoc edits
 
 /* ---------- output panes ---------- */
 function appendTo(el, chunk, cls) {
@@ -71,6 +72,7 @@ function loadScript(src) {
 /* ---------- assemble / run ---------- */
 async function assemble() {
   const src = $("editor").value;
+  const stem = currentStem;
   const asmOut = $("asm-output");
   $("btn-run").disabled = true;
   currentMmo = null;
@@ -79,13 +81,13 @@ async function assemble() {
   asmOut.__cls = "";
   status("assembling…");
   try {
-    const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", "prog.mms"], [
-      { name: "prog.mms", data: src, opts: { encoding: "utf8" } },
+    const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", stem + ".mms"], [
+      { name: stem + ".mms", data: src, opts: { encoding: "utf8" } },
     ]);
     appendTo(asmOut, stderr + stdout, stderr.trim() ? "err" : "");
     let mmo = null;
     try {
-      mmo = FS.readFile("prog.mmo");
+      mmo = FS.readFile(stem + ".mmo");
     } catch (e) { /* assembler errors: no output */ }
     if (mmo) {
       currentMmo = mmo;
@@ -102,6 +104,7 @@ async function assemble() {
 
 async function run() {
   if (!currentMmo) return;
+  const stem = currentStem;
   const simOut = $("sim-output");
   simOut.textContent = "";
   simOut.className = "console";
@@ -109,8 +112,8 @@ async function run() {
   status("running…");
   $("btn-run").disabled = true;
   try {
-    const { stdout, stderr } = await runTool(MMIX, ["mmix", "-q", "prog"], [
-      { name: "prog.mmo", data: currentMmo },
+    const { stdout, stderr } = await runTool(MMIX, ["mmix", "-q", stem], [
+      { name: stem + ".mmo", data: currentMmo },
     ]);
     appendTo(simOut, stdout, "");
     if (stderr.trim()) appendTo(simOut, stderr, "err");
@@ -168,9 +171,11 @@ async function boot() {
 
 async function loadExample(name) {
   try {
-    const res = await fetch("vendor/" + name);
+    currentStem = name.replace(/\.mms$/, "");
+    const res = await fetch("../vendor/" + name);
     $("editor").value = await res.text();
   } catch (e) {
+    currentStem = "prog";
     status("cannot load " + name, true);
   }
 }
