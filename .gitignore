@@ -1,5 +1,6 @@
 # artifacts
 build/
+web/wasm/
 tools/ctangle.exe
 tools/emsdk/
 

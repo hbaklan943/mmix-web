@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const repo = path.resolve(__dirname, "..");
-const wasmDir = path.join(repo, "build", "wasm");
+const wasmDir = path.join(repo, "web", "wasm");
 
 function runTool(Init, args, files) {
   return new Promise((resolve, reject) => {

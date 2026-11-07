@@ -1,11 +1,11 @@
-# Compile MMIXing tools to WebAssembly with Emscripten.
-# Copies nothing: runs ctangle with cwd=vendor (short-path requirement,
-# see build-native.ps1), then emcc compiles straight out of vendor\.
-# Outputs build\wasm\{mmixal.js, mmix.js} (+ .wasm next to them).
+# Compile the MMIX tools to WebAssembly with Emscripten.
+# Runs ctangle with cwd=vendor (short-path requirement, see build-native.ps1),
+# then emcc compiles straight out of vendor\.
+# Outputs web\wasm\{mmixal.js, mmix.js} where the frontend loads them.
 $ErrorActionPreference = "Stop"
 $repo  = Split-Path $PSScriptRoot -Parent
 $emsdk = "$env:TEMP\emsdk"
-$build = Join-Path $repo "build\wasm"
+$build = Join-Path $repo "web\wasm"
 New-Item -ItemType Directory -Force $build | Out-Null
 
 if (-not (Test-Path "$emsdk\emsdk.bat")) { throw "emsdk not found at $emsdk" }
