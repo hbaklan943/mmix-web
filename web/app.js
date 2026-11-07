@@ -108,12 +108,31 @@ async function assemble() {
   asmOut.textContent = "";
   asmOut.className = "console";
   asmOut.__cls = "";
+  editor.clearGutter("errors");
+  (editor.getAllMarks() || []).forEach((m) => m.clear());
   status("assembling…");
   try {
     const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", "-x", "-b", "250", stem + ".mms"], [
       { name: stem + ".mms", data: src, opts: { encoding: "utf8" } },
     ], null, $("stdin").value);
     appendTo(asmOut, stderr + stdout, stderr.trim() ? "err" : "");
+    // inline error markers
+    const errLines = new Set();
+    const re = /line\s+(\d+)/gi;
+    let m;
+    while ((m = re.exec(stderr)) !== null) errLines.add(parseInt(m[1], 10));
+    // also handle "At line N:" style
+    const re2 = /At line\s+(\d+)/gi;
+    while ((m = re2.exec(stderr)) !== null) errLines.add(parseInt(m[1], 10));
+    for (const ln of errLines) {
+      if (ln < 1 || ln > editor.lineCount()) continue;
+      const marker = document.createElement("span");
+      marker.className = "error-marker";
+      marker.textContent = "●";
+      marker.title = "error";
+      editor.setGutterMarker(ln - 1, "errors", marker);
+      editor.markText({ line: ln - 1, ch: 0 }, { line: ln - 1, ch: Infinity }, { className: "cm-error-line" });
+    }
     let mmo = null;
     try {
       mmo = FS.readFile(stem + ".mmo");
@@ -219,6 +238,7 @@ async function boot() {
   editor = CodeMirror.fromTextArea($("editor"), {
     mode: "mmixal",
     lineNumbers: true,
+    gutters: ["CodeMirror-linenumbers", "errors"],
     tabSize: 2,
     indentUnit: 2,
     extraKeys: { "Ctrl-Enter": assemble, "Cmd-Enter": assemble },

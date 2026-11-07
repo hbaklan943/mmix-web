@@ -63,6 +63,9 @@ main {
 }
 .CodeMirror-gutters { background: var(--panel) !important; border-right: 1px solid var(--border); }
 .CodeMirror-linenumber { color: #6b7280; }
+.CodeMirror-gutter.errors { width: 14px; }
+.error-marker { color: #ff7b72; font-weight: bold; }
+.cm-error-line { background: rgba(255,123,114,0.15); }
 #editor-pane.drag { outline: 2px dashed var(--accent); }
 .CodeMirror-linenumber { color: #6b7280; }
 .cm-s-default .cm-comment { color: #6b7280; font-style: italic; }
