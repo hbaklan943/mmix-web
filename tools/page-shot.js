@@ -56,22 +56,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ], { stdio: "ignore" });
 
   for (let i = 0; i < 60; i++) { try { await httpJson("GET", "/json/version"); break; } catch { await sleep(250); } }
-  const target = await httpJson("PUT", `/json/new?${url}`);
+  const target = await httpJson("PUT", `/json/new?about:blank`);
   const cdp = await connect(target.webSocketDebuggerUrl);
-  await cdp.send("Runtime.enable");
-
   const msgs = [];
+  await cdp.send("Runtime.enable");
+  await cdp.send("Log.enable");
+  await cdp.send("Network.enable");
   cdp.on("Runtime.consoleAPICalled", (p) => msgs.push(`[${p.type}] ` + p.args.map(a => a.value !== undefined ? JSON.stringify(a.value) : a.description || a.type).join(" ")));
   cdp.on("Runtime.exceptionThrown", (p) => { const d = p.exceptionDetails; msgs.push("[exception] " + (d.text || "") + " " + JSON.stringify(d.exception || d)); });
   cdp.on("Log.entryAdded", (p) => msgs.push(`[log:${p.entry.level}] ${p.entry.text} ${p.entry.url || ""}`.trim()));
-  await cdp.send("Log.enable");
-  cdp.on("Network.responseReceived", async (p) => {
-    if (p.response.status >= 400) msgs.push(`[http] ${p.response.status} ${p.response.url}`);
-  });
-  await cdp.send("Network.enable");
+  cdp.on("Network.responseReceived", (p) => { if (p.response.status >= 400) msgs.push(`[http] ${p.response.status} ${p.response.url}`); });
 
-  await sleep(4000); // let boot settle
-
+  await cdp.send("Page.navigate", { url });
+  await sleep(6000);
   const state = await cdp.send("Runtime.evaluate", {
     expression: `JSON.stringify({
       readyState: document.readyState,

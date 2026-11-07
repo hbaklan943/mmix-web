@@ -97,4 +97,10 @@ main {
   font: 13px/1.45 Consolas, monospace;
   white-space: pre;
 }
-.pane-label + .console { border-bottom: 1px solid var(--border); }
+.regs { padding: 6px 12px; border-top: 1px solid var(--border); }
+.regs summary { cursor: pointer; font-size: 12px; color: var(--accent); }
+.mem-read { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+.mem-read input { flex: 1; background: var(--panel); color: var(--fg); border: 1px solid var(--border); padding: 4px 8px; font: 13px Consolas, monospace; border-radius: 4px; }
+.mem-read button { padding: 4px 10px; font-size: 12px; }
+#mem-result { font: 13px Consolas, monospace; color: var(--accent); }
+#reg-output { height: 220px; }

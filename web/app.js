@@ -5,11 +5,19 @@
 const $ = (id) => document.getElementById(id);
 
 const EXAMPLES = ["stdin-demo.mms", "hello.mms", "fib.mms", "primes.mms", "sort.mms", "inout.mms", "echo.mms"];
+const SPECIAL_NAMES = {
+  229: "rTT", 230: "rZ", 231: "rY", 232: "rX", 233: "rW", 234: "rV",
+  235: "rU", 236: "rT", 237: "rS", 238: "rR", 239: "rQ", 240: "rP",
+  241: "rO", 242: "rN", 243: "rL", 244: "rK", 245: "rI", 246: "rH",
+  247: "rG", 248: "rF", 249: "rE", 250: "rD", 251: "rC", 252: "rB",
+  253: "rA", 254: "rJ", 255: "rBB",
+};
 
 let MMIXAL = null; // initMmixal constructor from wasm/mmixal.js
 let MMIX = null;   // initMmix constructor from wasm/mmix.js
 let currentMmo = null;
 let currentStem = "prog"; // file stem: example name or "prog" for ad-hoc edits
+let lastModule = null;
 
 /* ---------- output panes ---------- */
 function appendTo(el, chunk, cls) {
@@ -51,11 +59,11 @@ function runTool(Init, args, files, onOut, stdinText) {
       try {
         for (const f of files) M.FS.writeFile(f.name, f.data, f.opts);
         const rc = M.callMain(args.slice(1));
-        resolve({ stdout, stderr, rc, FS: M.FS });
+        resolve({ stdout, stderr, rc, FS: M.FS, module: M });
       } catch (e) {
         if (e && typeof e.status === "number") {
           // normal nonzero exit (e.g. mmixal reporting errors)
-          resolve({ stdout, stderr, rc: e.status, FS: M.FS });
+          resolve({ stdout, stderr, rc: e.status, FS: M.FS, module: M });
         } else {
           reject(e);
         }
@@ -117,11 +125,12 @@ async function run() {
   status("running…");
   $("btn-run").disabled = true;
   try {
-    const { stdout, stderr } = await runTool(MMIX, ["mmix", "-q", stem], [
+    const { stdout, stderr, module: M } = await runTool(MMIX, ["mmix", "-q", stem], [
       { name: stem + ".mmo", data: currentMmo },
     ], null, $("stdin").value);
     appendTo(simOut, stdout, "");
     if (stderr.trim()) appendTo(simOut, stderr, "err");
+    if (M) populateRegisters(M);
     status("done");
   } catch (e) {
     appendTo(simOut, String(e), "err");
@@ -143,6 +152,16 @@ async function boot() {
   exSel.onchange = () => loadExample(exSel.value);
   $("btn-assemble").onclick = assemble;
   $("btn-run").onclick = run;
+  $("btn-mem").onclick = () => {
+    if (!lastModule) return;
+    try {
+      const a = BigInt($("mem-addr").value.trim());
+      const tet = lastModule._mmix_mem_read_tetra(Number((a >> 32n) & 0xffffffffn), Number(a & 0xffffffffn));
+      $("mem-result").textContent = "0x" + tet.toString(16).padStart(8, "0");
+    } catch (e) {
+      $("mem-result").textContent = "bad address";
+    }
+  };
 
   const editor = $("editor");
   editor.addEventListener("keydown", (e) => {
@@ -172,6 +191,31 @@ async function boot() {
   $("btn-assemble").disabled = false;
   status("toolchain ready");
   await loadExample("hello.mms");
+}
+
+function populateRegisters(M) {
+  lastModule = M;
+  const ptr = M._mmix_get_g_ptr();
+  const view = new DataView(M.HEAPU8.buffer);
+  const ipPtr = M._mmix_get_inst_ptr_addr();
+  const ipLo = view.getUint32(ipPtr, true);
+  const ipHi = view.getUint32(ipPtr + 4, true);
+  const lines = [];
+  lines.push("inst_ptr = 0x" + ipHi.toString(16).padStart(8, "0") + ipLo.toString(16).padStart(8, "0"));
+  lines.push("");
+  for (let i = 255; i >= 0; i--) {
+    const off = ptr + i * 8;
+    const lo = view.getUint32(off, true);
+    const hi = view.getUint32(off + 4, true);
+    const name = SPECIAL_NAMES[i] ? "  " + SPECIAL_NAMES[i] : "   $" + i;
+    lines.push(name.padEnd(8) + " = 0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0"));
+  }
+  $("reg-output").textContent = lines.join("\n");
+  $("btn-mem").disabled = false;
+}
+
+function hex64(h, l) {
+  return h.toString(16).padStart(8, "0") + l.toString(16).padStart(8, "0");
 }
 
 async function loadExample(name) {

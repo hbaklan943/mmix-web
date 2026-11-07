@@ -165,6 +165,8 @@ async function evalJS(cdp, expr) {
     console.log(sim ? sim.split("\n").slice(0, 4).join(" ⏎ ") : "(no stdout)");
     if (/error|aborted/.test(runSt)) fail(`run ${ex.name}: ${runSt}`);
     if (ex.expect && !sim.includes(ex.expect)) fail(`${ex.name}: expected "${ex.expect}" in output`);
+    const regs = await evalJS(cdp, "document.getElementById('reg-output').textContent");
+    if (!/inst_ptr/.test(regs)) fail(`${ex.name}: registers not populated`);
   }
 
   const errors = consoleMsgs.filter((m) => /error|exception/i.test(m) && !/withdraw/i.test(m));

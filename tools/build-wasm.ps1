@@ -39,7 +39,7 @@ $common = @(
     "-s", "FILESYSTEM=1",
     "-s", "ALLOW_MEMORY_GROWTH=1",
     "-s", "EXIT_RUNTIME=1",
-    "-s", "EXPORTED_RUNTIME_METHODS=callMain,FS",
+    "-s", "EXPORTED_RUNTIME_METHODS=callMain,FS,HEAPU8,HEAP32",
     "-std=gnu89", "-O2"
 )
 
@@ -47,8 +47,9 @@ emcc mmixal.c mmix-arith.c -o (Join-Path $build "mmixal.js") `
       -s EXPORT_NAME=initMmixal @common
 if ($LASTEXITCODE -ne 0) { throw "emcc failed on mmixal" }
 
-emcc mmix-sim.c mmix-arith.c mmix-io.c -o (Join-Path $build "mmix.js") `
-      -s EXPORT_NAME=initMmix @common
+emcc mmix-sim.c mmix-arith.c mmix-io.c (Join-Path $repo "tools\mmix-inspect.c") -o (Join-Path $build "mmix.js") `
+      -s EXPORT_NAME=initMmix @common `
+      -s 'EXPORTED_FUNCTIONS=["_main","_mmix_get_g_ptr","_mmix_get_inst_ptr_addr","_mmix_mem_read_tetra"]'
 if ($LASTEXITCODE -ne 0) { throw "emcc failed on mmix" }
 Pop-Location
 
