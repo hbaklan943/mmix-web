@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>mmix-web</title>
 <link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,7 +30,7 @@
     <div class="pane-label">Simulator output</div>
     <div id="sim-output" class="console"></div>
     <details id="regs" class="regs">
-      <summary>Registers (after run)</summary>
+      <summary>Registers (after run)</summary>>
       <div class="mem-read">
         <input id="mem-addr" spellcheck="false" placeholder="read tetra at 0x…">
         <button id="btn-mem" disabled>Read</button>
@@ -37,10 +38,17 @@
       </div>
       <pre id="reg-output" class="console"></pre>
     </details>
+    <details id="files" class="regs">
+      <summary>Files in virtual FS (after run)</summary>
+      <input type="file" id="file-upload" multiple>
+      <div id="file-list" class="console"></div>
+    </details>
     <div class="pane-label">Program input (stdin)</div>
     <textarea id="stdin" spellcheck="false" placeholder="Optional — fed to the program as standard input"></textarea>
   </section>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/simple.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

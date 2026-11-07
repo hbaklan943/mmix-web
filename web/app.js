@@ -18,6 +18,22 @@ let MMIX = null;   // initMmix constructor from wasm/mmix.js
 let currentMmo = null;
 let currentStem = "prog"; // file stem: example name or "prog" for ad-hoc edits
 let lastModule = null;
+let editor = null; // CodeMirror instance
+let uploadedFiles = new Map();
+
+function defineMmixalMode() {
+  if (!window.CodeMirror) return;
+  if (CodeMirror.modes && CodeMirror.modes.mmixal) return;
+  CodeMirror.defineSimpleMode("mmixal", {
+    start: [
+      { regex: /%.*/, token: "comment" },
+      { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
+      { regex: /#?[0-9a-fA-F]+(?:\.[0-9a-fA-F]+)?/, token: "number" },
+      { regex: /\$[0-9]+/, token: "variable-2" },
+      { regex: /[A-Za-z_][\w]*/, token: "variable" },
+    ],
+  });
+}
 
 /* ---------- output panes ---------- */
 function appendTo(el, chunk, cls) {
@@ -84,7 +100,7 @@ function loadScript(src) {
 
 /* ---------- assemble / run ---------- */
 async function assemble() {
-  const src = $("editor").value;
+  const src = editor.getValue();
   const stem = currentStem;
   const asmOut = $("asm-output");
   $("btn-run").disabled = true;
@@ -134,12 +150,12 @@ async function run() {
     if (profile) args.push("-P");
     if (stats) args.push("-s");
     args.push(stem);
-    const { stdout, stderr, module: M } = await runTool(MMIX, args, [
-      { name: stem + ".mmo", data: currentMmo },
-    ], null, $("stdin").value);
+    const files = [{ name: stem + ".mmo", data: currentMmo }];
+    for (const [name, data] of uploadedFiles) files.push({ name, data });
+    const { stdout, stderr, module: M } = await runTool(MMIX, args, files, null, $("stdin").value);
     appendTo(simOut, stdout, "");
     if (stderr.trim()) appendTo(simOut, stderr, "err");
-    if (M) populateRegisters(M);
+    if (M) { populateRegisters(M); listOutputFiles(M); }
     status("done");
   } catch (e) {
     appendTo(simOut, String(e), "err");
@@ -158,6 +174,13 @@ async function boot() {
     opt.value = name;
     exSel.appendChild(opt);
   }
+  $("file-upload").onchange = (e) => {
+    for (const f of e.target.files) {
+      const r = new FileReader();
+      r.onload = () => uploadedFiles.set(f.name, new Uint8Array(r.result));
+      r.readAsArrayBuffer(f);
+    }
+  };
   exSel.onchange = () => loadExample(exSel.value);
   $("btn-assemble").onclick = assemble;
   $("btn-run").onclick = run;
@@ -172,20 +195,15 @@ async function boot() {
     }
   };
 
-  const editor = $("editor");
-  editor.addEventListener("keydown", (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const start = editor.selectionStart;
-      editor.setRangeText("  ", start, editor.selectionEnd, "end");
-    }
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      assemble();
-    }
+  defineMmixalMode();
+  editor = CodeMirror.fromTextArea($("editor"), {
+    mode: "mmixal",
+    lineNumbers: true,
+    tabSize: 2,
+    indentUnit: 2,
+    extraKeys: { "Ctrl-Enter": assemble, "Cmd-Enter": assemble },
   });
-
-  editor.value = "";
+  editor.setValue("");
   status("loading toolchain…");
   try {
     await loadScript("wasm/mmixal.js");
@@ -194,7 +212,6 @@ async function boot() {
     MMIX = window.initMmix;
   } catch (e) {
     status(String(e), true);
-    editor.removeAttribute("placeholder");
     return;
   }
   $("btn-assemble").disabled = false;
@@ -227,13 +244,42 @@ function hex64(h, l) {
   return h.toString(16).padStart(8, "0") + l.toString(16).padStart(8, "0");
 }
 
+function listOutputFiles(M) {
+  const out = $("file-list");
+  out.textContent = "";
+  const skip = new Set([".", "..", "dev", "proc", "tmp", "home"]);
+  let names = [];
+  try { names = M.FS.readdir("/").filter((n) => !skip.has(n)); } catch (e) { names = []; }
+  if (uploadedFiles.size) {
+    out.textContent += "uploaded: " + [...uploadedFiles.keys()].join(", ") + "\n";
+  }
+  if (!names.length) { out.textContent += "(no files created by the program)\n"; return; }
+  for (const n of names) {
+    let size = 0, isFile = false;
+    try { const st = M.FS.stat("/" + n); isFile = M.FS.isFile(st.mode); size = st.size; } catch (e) {}
+    if (!isFile) continue;
+    const btn = document.createElement("button");
+    btn.textContent = `download ${n} (${size} B)`;
+    btn.onclick = () => {
+      const data = M.FS.readFile("/" + n);
+      const blob = new Blob([data]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = n; a.click();
+      URL.revokeObjectURL(url);
+    };
+    out.appendChild(btn);
+    out.appendChild(document.createTextNode("\n"));
+  }
+}
+
 async function loadExample(name) {
   for (const dir of ["examples", "../vendor"]) {
     try {
       const res = await fetch(dir + "/" + name);
       if (!res.ok) continue;
       currentStem = name.replace(/\.mms$/, "");
-      $("editor").value = await res.text();
+      editor.setValue(await res.text());
       return;
     } catch (e) { /* try next dir */ }
   }

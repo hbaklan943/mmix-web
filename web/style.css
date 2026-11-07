@@ -55,19 +55,18 @@ main {
   flex-direction: column;
 }
 #editor-pane { border-right: 1px solid var(--border); }
-#editor {
-  flex: 1;
-  width: 100%;
+.CodeMirror {
+  height: 100%;
+  font: 14px/1.45 Consolas, monospace;
   background: var(--bg);
   color: var(--fg);
-  border: 0;
-  resize: none;
-  outline: none;
-  padding: 12px;
-  font: 14px/1.45 Consolas, monospace;
-  white-space: pre;
-  tab-size: 2;
 }
+.CodeMirror-gutters { background: var(--panel); border-right: 1px solid var(--border); }
+.CodeMirror-linenumber { color: #6b7280; }
+.cm-s-default .cm-comment { color: #6b7280; font-style: italic; }
+.cm-s-default .cm-string { color: #a5d6ff; }
+.cm-s-default .cm-number { color: #79c0ff; }
+.cm-s-default .cm-variable-2 { color: #ffa657; }
 .pane-label {
   padding: 6px 12px;
   font-size: 11px;
