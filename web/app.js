@@ -167,8 +167,8 @@ async function run() {
 
 /* ---------- boot ---------- */
 async function boot() {
+async function boot() {
   const exSel = $("examples");
-  for (const name of EXAMPLES) {
     const opt = document.createElement("option");
     opt.textContent = name;
     opt.value = name;
@@ -181,7 +181,20 @@ async function boot() {
       r.readAsArrayBuffer(f);
     }
   };
-  exSel.onchange = () => loadExample(exSel.value);
+  $("examples").onchange = () => loadExample($("examples").value);
+  // drag-and-drop .mms files into the editor
+  const pane = $("editor-pane");
+  pane.addEventListener("dragover", (e) => { e.preventDefault(); pane.classList.add("drag"); });
+  pane.addEventListener("dragleave", () => pane.classList.remove("drag"));
+  pane.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    pane.classList.remove("drag");
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    currentStem = f.name.replace(/\.mms$/, "") || "prog";
+    editor.setValue(await f.text());
+    status("loaded " + f.name);
+  });
   $("btn-assemble").onclick = assemble;
   $("btn-run").onclick = run;
   $("btn-mem").onclick = () => {
@@ -204,7 +217,7 @@ async function boot() {
     extraKeys: { "Ctrl-Enter": assemble, "Cmd-Enter": assemble },
   });
   editor.setValue("");
-  status("loading toolchain…");
+  window.loadExample = loadExample;
   try {
     await loadScript("wasm/mmixal.js");
     await loadScript("wasm/mmix.js");

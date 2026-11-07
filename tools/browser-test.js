@@ -82,6 +82,7 @@ async function evalJS(cdp, expr) {
   const r = await cdp.send("Runtime.evaluate", {
     expression: expr,
     returnByValue: true,
+    awaitPromise: true,
   });
   if (r.exceptionDetails) throw new Error("page eval: " + JSON.stringify(r.exceptionDetails));
   return r.result && r.result.value;
@@ -138,7 +139,8 @@ async function evalJS(cdp, expr) {
   console.log("[status]", await evalJS(cdp, "document.getElementById('status').textContent"));
   await waitFor("/toolchain ready/.test(document.getElementById('status').textContent)", "toolchain ready", 40000);
 
-  // 3) assemble+run each example (default: quick subset; pass "full" to include primes/sort)
+  // Instead, evaluate a global hook: store messages in window.__msgs
+  await evalJS(cdp, "window.__msgs=[]; const _log=console.log; console.log=(...a)=>{window.__msgs.push(a.join(' '));_log(...a)}");
   const examples = process.argv[2] === "full"
     ? [{ name: "stdin-demo.mms", stdin: "hello from stdin", expect: "hello from stdin" },
        { name: "hello.mms", expect: "hello, world" },
@@ -148,8 +150,9 @@ async function evalJS(cdp, expr) {
        { name: "hello.mms", expect: "hello, world" },
        { name: "fib.mms" }];
   for (const ex of examples) {
-    await evalJS(cdp, `document.getElementById('examples').value = "${ex.name}"; document.getElementById('examples').onchange()`);
-    await sleep(700); // fetch + editor fill
+    await evalJS(cdp, `document.getElementById('examples').value = "${ex.name}"`);
+    await evalJS(cdp, `(async()=>{ await window.loadExample("${ex.name}"); return true; })()`);
+    await sleep(300);
     if (ex.stdin) await evalJS(cdp, `document.getElementById('stdin').value = "${ex.stdin}"`);
     await evalJS(cdp, "document.getElementById('btn-assemble').click()");
     await waitFor("/Ready|error/.test(document.getElementById('status').textContent)", "assemble done (" + ex.name + ")", 30000);
@@ -169,8 +172,8 @@ async function evalJS(cdp, expr) {
     if (!/inst_ptr/.test(regs)) fail(`${ex.name}: registers not populated`);
   }
 
-  const errors = consoleMsgs.filter((m) => /error|exception/i.test(m) && !/withdraw/i.test(m));
-  if (errors.length) console.log("console errors:", errors);
+  const msgs = await evalJS(cdp, "window.__msgs");
+  console.log("console:", msgs.join(" | "));
 
   console.log("BROWSER E2E OK");
   cdp.close();
