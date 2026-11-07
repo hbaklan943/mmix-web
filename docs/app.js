@@ -4,7 +4,59 @@
 
 const $ = (id) => document.getElementById(id);
 
-const EXAMPLES = ["stdin-demo.mms", "hello.mms", "fib.mms", "primes.mms", "sort.mms", "inout.mms", "echo.mms"];
+const EXAMPLES = [
+  "hello.mms",
+  "stdin-demo.mms",
+  "fib.mms",
+  "primes.mms",
+  "sort.mms",
+  "inout.mms",
+  "echo.mms",
+  "alpha.mms",
+  "coolcomb.mms",
+  "copy.mms",
+  "cp.mms",
+  "crypto.mms",
+  "crypto1.mms",
+  "crypto2.mms",
+  "fftswap.mms",
+  "fibgo.mms",
+  "fibsub.mms",
+  "fsubtest.mms",
+  "halves.mms",
+  "harm.mms",
+  "hptest.mms",
+  "iotest.mms",
+  "iotest1.mms",
+  "iotest2.mms",
+  "number1.mms",
+  "permu-heap.mms",
+  "permu-langdon.mms",
+  "permu-plain.mms",
+  "permu-st.mms",
+  "phi.mms",
+  "poptest.mms",
+  "popup.mms",
+  "primes6.mms",
+  "primesf.mms",
+  "primesfx.mms",
+  "primessf.mms",
+  "primesx.mms",
+  "pushtest.mms",
+  "saddle1.mms",
+  "saddle2.mms",
+  "silly.mms",
+  "sim.mms",
+  "sortx.mms",
+  "strcpy.mms",
+  "sub1.mms",
+  "sub2.mms",
+  "test.mms",
+  "traffic.mms",
+  "valid.mms",
+  "zero.mms",
+];
+
 const SPECIAL_NAMES = {
   229: "rTT", 230: "rZ", 231: "rY", 232: "rX", 233: "rW", 234: "rV",
   235: "rU", 236: "rT", 237: "rS", 238: "rR", 239: "rQ", 240: "rP",
@@ -21,21 +73,38 @@ let currentListing = null;
 let lastModule = null;
 let editor = null; // CodeMirror instance
 let uploadedFiles = new Map();
-let tabs = [{ name: "untitled.mms", content: "", stem: "untitled" }];
+let tabs = [{ name: "untitled.mms", content: "", stem: "untitled", mmo: null, listing: null }];
 let activeTab = 0;
+let suppressAutoRun = false;
 
 function defineMmixalMode() {
   if (!window.CodeMirror) return;
   if (CodeMirror.modes && CodeMirror.modes.mmixal) return;
+
+  const opcodes = /^(?:TRAP|FCMP|FUN|FEQL|FADD|FIX|FSUB|FIXU|FLOT|FLOTI|FLOTU|FLOTUI|SFLOT|SFLOTI|SFLOTU|SFLOTUI|FMUL|FDIV|FSQRT|FREM|FINT|MUL|MULI|MULU|MULUI|DIV|DIVI|DIVU|DIVUI|ADD|ADDI|ADDU|ADDUI|SUB|SUBI|SUBU|SUBUI|2ADDU|2ADDUI|4ADDU|4ADDUI|8ADDU|8ADDUI|NEG|NEGI|NEGU|NEGUI|CMP|CMPI|CMPU|CMPUI|CSN|CSNI|CSZ|CSZI|CSP|CSPI|CSOD|CSODI|CSNN|CSNNI|CSNZ|CSNZI|CSNP|CSNPI|CSEV|CSEVI|ZSN|ZSNI|ZSZ|ZSZI|ZSP|ZSPI|ZSOD|ZSODI|ZSNN|ZSNNI|ZSNZ|ZSNZI|ZSNP|ZSNPI|ZSEV|ZSEVI|LDB|LDBI|LDBU|LDBUI|LDW|LDWI|LDWU|LDWUI|LDT|LDTI|LDTU|LDTUI|LDO|LDOI|LDOU|LDHT|LDHTI|CSWAP|CSWAPI|LDUNC|LDUNCI|LDVTS|LDVTSI|PRELD|PRELDI|PREGO|PREGOI|GO|GOI|STB|STBI|STBU|STBUI|STW|STWI|STWU|STWUI|STT|STTI|STTU|STTUI|STO|STOI|STOU|STOUI|STSF|STSFI|STHT|STHTI|STCO|STCOI|STUNC|STUNCI|SYNCD|SYNCDI|PREST|PRESTI|SYNCID|SYNCIDI|PUSHGO|PUSHGOI|OR|ORI|ORN|ORNI|NOR|NORI|XOR|XORI|AND|ANDI|ANDN|ANDNI|NAND|NANDI|NXOR|NXORI|BDIF|BDIFI|WDIF|WDIFI|TDIF|TDIFI|ODIF|ODIFI|MUX|MUXI|SADD|SADDI|MOR|MORI|MXOR|MXORI|SETH|SETMH|SETML|SETL|INCH|INCMH|INCML|INCL|ORH|ORMH|ORML|ORL|ANDNH|ANDNMH|ANDNML|ANDNL|JMP|JMPB|PUSHJ|PUSHJB|GETA|GETAB|PUT|PUTI|POP|RESUME|SAVE|UNSAVE|SYNC|SWYM|GET|TRIP|SET)\b/i;
+  const pseudoOps = /^(?:IS|LOC|BYTE|WYDE|TETRA|OCTA|PREFIX|GREG|LOCAL|BSPEC|ESPEC)\b/i;
+  const specialRegs = /^(?:r[A-Z]|rBB|rTT|rWW|rXX|rYY|rZZ)\b/;
+  const trapConsts = /^(?:Halt|Fopen|Fclose|Fread|Fgets|Fgetws|Fwrite|Fputs|Fputws|Fseek|Ftell|StdIn|StdOut|StdErr|TextRead|TextWrite|BinaryRead|BinaryWrite|BinaryReadWrite)\b/;
+
   CodeMirror.defineSimpleMode("mmixal", {
     start: [
       { regex: /%.*/, token: "comment" },
       { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
       { regex: /#?[0-9a-fA-F]+(?:\.[0-9a-fA-F]+)?/, token: "number" },
       { regex: /\$[0-9]+/, token: "variable-2" },
+      { regex: specialRegs, token: "variable-2" },
+      { regex: opcodes, token: "keyword" },
+      { regex: pseudoOps, token: "builtin" },
+      { regex: trapConsts, token: "atom" },
       { regex: /[A-Za-z_][\w]*/, token: "variable" },
     ],
   });
+}
+
+function setEditorContent(val) {
+  suppressAutoRun = true;
+  editor.setValue(val || "");
+  suppressAutoRun = false;
 }
 
 /* ---------- output panes ---------- */
@@ -49,6 +118,7 @@ function appendTo(el, chunk, cls) {
   el.textContent += chunk;
   el.scrollTop = el.scrollHeight;
 }
+
 function status(text, isError) {
   const el = $("status");
   el.textContent = text;
@@ -57,7 +127,7 @@ function status(text, isError) {
 
 /* ---------- wasm module driver ---------- */
 /* Runs one tool pristine each time. files: [{name, data, opts}].
-   Returns { stdout, stderr, rc, FS } */
+   Returns { stdout, stderr, rc, FS, module } */
 function runTool(Init, args, files, onOut, stdinText) {
   return new Promise((resolve, reject) => {
     let stdout = "";
@@ -101,16 +171,17 @@ function loadScript(src) {
   });
 }
 
-/* ---------- assemble / run ---------- */
+/* ---------- tabs ---------- */
 function saveActiveTab() {
-  if (!editor) return;
+  if (!editor || !tabs[activeTab]) return;
   tabs[activeTab].content = editor.getValue();
   tabs[activeTab].stem = currentStem;
+  tabs[activeTab].mmo = currentMmo;
+  tabs[activeTab].listing = currentListing;
 }
 
 function renderTabs() {
   const bar = $("tab-bar");
-  // keep new-tab button
   const btn = $("btn-new-tab");
   bar.innerHTML = "";
   tabs.forEach((t, i) => {
@@ -133,31 +204,59 @@ function switchTab(i) {
   saveActiveTab();
   activeTab = i;
   currentStem = tabs[i].stem;
-  editor.setValue(tabs[i].content);
+  currentMmo = tabs[i].mmo || null;
+  currentListing = tabs[i].listing || null;
+  setEditorContent(tabs[i].content || "");
+  $("btn-run").disabled = !currentMmo;
+  $("btn-download-mmo").disabled = !currentMmo;
+  $("btn-download-lst").disabled = !currentListing;
   renderTabs();
 }
 
 function newTab(name) {
   saveActiveTab();
   const n = name || ("untitled" + (tabs.length + 1) + ".mms");
-  tabs.push({ name: n, content: "", stem: n.replace(/\.mms$/, "") || "prog" });
+  tabs.push({ name: n, content: "", stem: n.replace(/\.mms$/, "") || "prog", mmo: null, listing: null });
   activeTab = tabs.length - 1;
   currentStem = tabs[activeTab].stem;
-  editor.setValue("");
+  currentMmo = null;
+  currentListing = null;
+  setEditorContent("");
+  $("btn-run").disabled = true;
+  $("btn-download-mmo").disabled = true;
+  $("btn-download-lst").disabled = true;
   renderTabs();
 }
 
 function closeTab(i) {
-  if (tabs.length <= 1) { tabs[0] = { name: "untitled.mms", content: "", stem: "untitled" }; activeTab = 0; currentStem = "untitled"; editor.setValue(""); renderTabs(); return; }
+  if (tabs.length <= 1) {
+    tabs[0] = { name: "untitled.mms", content: "", stem: "untitled", mmo: null, listing: null };
+    activeTab = 0;
+    currentStem = "untitled";
+    currentMmo = null;
+    currentListing = null;
+    setEditorContent("");
+    $("btn-run").disabled = true;
+    $("btn-download-mmo").disabled = true;
+    $("btn-download-lst").disabled = true;
+    renderTabs();
+    return;
+  }
   saveActiveTab();
   tabs.splice(i, 1);
   if (activeTab >= tabs.length) activeTab = tabs.length - 1;
   if (activeTab < 0) activeTab = 0;
   currentStem = tabs[activeTab].stem;
-  editor.setValue(tabs[activeTab].content);
+  currentMmo = tabs[activeTab].mmo || null;
+  currentListing = tabs[activeTab].listing || null;
+  setEditorContent(tabs[activeTab].content || "");
+  $("btn-run").disabled = !currentMmo;
+  $("btn-download-mmo").disabled = !currentMmo;
+  $("btn-download-lst").disabled = !currentListing;
   renderTabs();
 }
 
+/* ---------- assemble / run ---------- */
 async function assemble() {
   const src = editor.getValue();
   const stem = currentStem;
@@ -166,6 +265,11 @@ async function assemble() {
   $("btn-download-mmo").disabled = true;
   $("btn-download-lst").disabled = true;
   currentListing = null;
+  currentMmo = null;
+  if (tabs[activeTab]) {
+    tabs[activeTab].mmo = null;
+    tabs[activeTab].listing = null;
+  }
   asmOut.textContent = "";
   asmOut.className = "console";
   asmOut.__cls = "";
@@ -182,7 +286,6 @@ async function assemble() {
     const re = /line\s+(\d+)/gi;
     let m;
     while ((m = re.exec(stderr)) !== null) errLines.add(parseInt(m[1], 10));
-    // also handle "At line N:" style
     const re2 = /At line\s+(\d+)/gi;
     while ((m = re2.exec(stderr)) !== null) errLines.add(parseInt(m[1], 10));
     for (const ln of errLines) {
@@ -200,11 +303,12 @@ async function assemble() {
     } catch (e) { /* assembler errors: no output */ }
     if (mmo) {
       currentMmo = mmo;
-      $("btn-run").disabled = !MMIX;
+      if (tabs[activeTab]) tabs[activeTab].mmo = mmo;
       status(`assembled ${mmo.length} bytes - Ready`);
       updateHash();
       try { currentListing = new TextDecoder().decode(FS.readFile(stem + ".lst")); } catch (e) { currentListing = null; }
-      $("btn-run").disabled = false;
+      if (tabs[activeTab]) tabs[activeTab].listing = currentListing;
+      $("btn-run").disabled = !MMIX;
       $("btn-download-mmo").disabled = false;
       $("btn-download-lst").disabled = !currentListing;
     } else {
@@ -268,6 +372,7 @@ async function boot() {
   };
   $("examples").onchange = () => loadExample($("examples").value);
   $("btn-new-tab").onclick = () => newTab();
+
   // drag-and-drop .mms files into the editor
   const pane = $("editor-pane");
   pane.addEventListener("dragover", (e) => { e.preventDefault(); pane.classList.add("drag"); });
@@ -281,10 +386,18 @@ async function boot() {
     tabs[activeTab].name = f.name;
     tabs[activeTab].stem = currentStem;
     tabs[activeTab].content = await f.text();
-    editor.setValue(tabs[activeTab].content);
+    tabs[activeTab].mmo = null;
+    tabs[activeTab].listing = null;
+    currentMmo = null;
+    currentListing = null;
+    $("btn-run").disabled = true;
+    $("btn-download-mmo").disabled = true;
+    $("btn-download-lst").disabled = true;
+    setEditorContent(tabs[activeTab].content);
     renderTabs();
     status("loaded " + f.name);
   });
+
   $("btn-assemble").onclick = assemble;
   $("btn-run").onclick = run;
   $("btn-download-mmo").onclick = () => {
@@ -330,17 +443,28 @@ async function boot() {
     extraKeys: { "Ctrl-Enter": assemble, "Cmd-Enter": assemble },
   });
   editor.setValue("");
+
   const shared = decodeProgram(location.hash.slice(1));
-  if (shared) { editor.setValue(shared); currentStem = "shared"; tabs[0].content = shared; tabs[0].name = "shared.mms"; tabs[0].stem = "shared"; }
+  if (shared) {
+    editor.setValue(shared);
+    currentStem = "shared";
+    tabs[0].content = shared;
+    tabs[0].name = "shared.mms";
+    tabs[0].stem = "shared";
+  }
   renderTabs();
-  applyTheme(localStorage.getItem("mmix-theme") === "light");
+
+  const isLight = localStorage.getItem("mmix-theme") === "light";
+  applyTheme(isLight);
   $("btn-theme").onclick = () => applyTheme(!document.documentElement.classList.contains("light"));
+
   let autoTimer = null;
   editor.on("change", () => {
-    if (!$("opt-autorun").checked) return;
+    if (suppressAutoRun || !$("opt-autorun").checked) return;
     clearTimeout(autoTimer);
     autoTimer = setTimeout(() => { assemble().then(() => { if (currentMmo) run(); }); }, 900);
   });
+
   window.loadExample = loadExample;
   try {
     await loadScript("wasm/mmixal.js");
@@ -393,6 +517,8 @@ function updateHash() {
 
 function applyTheme(light) {
   document.documentElement.classList.toggle("light", light);
+  const btn = $("btn-theme");
+  if (btn) btn.textContent = light ? "☀️ Light" : "🌙 Dark";
   try { localStorage.setItem("mmix-theme", light ? "light" : "dark"); } catch (e) {}
 }
 
@@ -430,18 +556,29 @@ function listOutputFiles(M) {
 }
 
 async function loadExample(name) {
-  for (const dir of ["examples", "vendor", "../examples", "../vendor"]) {
+  const paths = name === "stdin-demo.mms"
+    ? ["examples/stdin-demo.mms", "../examples/stdin-demo.mms", "vendor/stdin-demo.mms"]
+    : ["vendor/" + name, "../vendor/" + name, "examples/" + name, "../examples/" + name];
+  for (const path of paths) {
     try {
-      const res = await fetch(dir + "/" + name);
+      const res = await fetch(path);
       if (!res.ok) continue;
       currentStem = name.replace(/\.mms$/, "");
       tabs[activeTab].name = name;
       tabs[activeTab].stem = currentStem;
       tabs[activeTab].content = await res.text();
-      editor.setValue(tabs[activeTab].content);
+      tabs[activeTab].mmo = null;
+      tabs[activeTab].listing = null;
+      currentMmo = null;
+      currentListing = null;
+      $("btn-run").disabled = true;
+      $("btn-download-mmo").disabled = true;
+      $("btn-download-lst").disabled = true;
+      setEditorContent(tabs[activeTab].content);
+      if ($("examples").value !== name) $("examples").value = name;
       renderTabs();
       return;
-    } catch (e) { /* try next dir */ }
+    } catch (e) { /* try next path */ }
   }
   currentStem = "prog";
   status("cannot load " + name, true);
