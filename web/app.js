@@ -121,7 +121,8 @@ async function assemble() {
     if (mmo) {
       currentMmo = mmo;
       $("btn-run").disabled = !MMIX;
-      status(`assembled ${mmo.length} bytes — Ready`);
+      status(`assembled ${mmo.length} bytes - Ready`);
+      updateHash();
     } else {
       status("assembler error", true);
     }
@@ -197,6 +198,12 @@ async function boot() {
   });
   $("btn-assemble").onclick = assemble;
   $("btn-run").onclick = run;
+  $("btn-share").onclick = async () => {
+    updateHash();
+    const url = location.href;
+    try { await navigator.clipboard.writeText(url); status("share link copied"); }
+    catch (e) { window.prompt("Copy this share link:", url); }
+  };
   $("btn-mem").onclick = () => {
     if (!lastModule) return;
     try {
@@ -217,6 +224,8 @@ async function boot() {
     extraKeys: { "Ctrl-Enter": assemble, "Cmd-Enter": assemble },
   });
   editor.setValue("");
+  const shared = decodeProgram(location.hash.slice(1));
+  if (shared) { editor.setValue(shared); currentStem = "shared"; }
   window.loadExample = loadExample;
   try {
     await loadScript("wasm/mmixal.js");
@@ -251,6 +260,20 @@ function populateRegisters(M) {
   }
   $("reg-output").textContent = lines.join("\n");
   $("btn-mem").disabled = false;
+}
+
+function encodeProgram(src) {
+  try { return btoa(unescape(encodeURIComponent(src))); } catch (e) { return ""; }
+}
+function decodeProgram(hash) {
+  try { return decodeURIComponent(escape(atob(hash))); } catch (e) { return ""; }
+}
+function updateHash() {
+  if (!editor) return;
+  const src = editor.getValue();
+  const enc = encodeProgram(src);
+  if (!enc) return;
+  try { history.replaceState(null, "", "#" + enc); } catch (e) {}
 }
 
 function hex64(h, l) {
