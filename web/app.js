@@ -20,6 +20,8 @@ let currentStem = "prog"; // file stem: example name or "prog" for ad-hoc edits
 let lastModule = null;
 let editor = null; // CodeMirror instance
 let uploadedFiles = new Map();
+let tabs = [{ name: "untitled.mms", content: "", stem: "untitled" }];
+let activeTab = 0;
 
 function defineMmixalMode() {
   if (!window.CodeMirror) return;
@@ -99,6 +101,62 @@ function loadScript(src) {
 }
 
 /* ---------- assemble / run ---------- */
+function saveActiveTab() {
+  if (!editor) return;
+  tabs[activeTab].content = editor.getValue();
+  tabs[activeTab].stem = currentStem;
+}
+
+function renderTabs() {
+  const bar = $("tab-bar");
+  // keep new-tab button
+  const btn = $("btn-new-tab");
+  bar.innerHTML = "";
+  tabs.forEach((t, i) => {
+    const el = document.createElement("span");
+    el.className = "tab" + (i === activeTab ? " active" : "");
+    el.textContent = t.name;
+    el.onclick = () => switchTab(i);
+    const close = document.createElement("span");
+    close.className = "close";
+    close.textContent = "×";
+    close.onclick = (e) => { e.stopPropagation(); closeTab(i); };
+    el.appendChild(close);
+    bar.appendChild(el);
+  });
+  bar.appendChild(btn);
+}
+
+function switchTab(i) {
+  if (i < 0 || i >= tabs.length) return;
+  saveActiveTab();
+  activeTab = i;
+  currentStem = tabs[i].stem;
+  editor.setValue(tabs[i].content);
+  renderTabs();
+}
+
+function newTab(name) {
+  saveActiveTab();
+  const n = name || ("untitled" + (tabs.length + 1) + ".mms");
+  tabs.push({ name: n, content: "", stem: n.replace(/\.mms$/, "") || "prog" });
+  activeTab = tabs.length - 1;
+  currentStem = tabs[activeTab].stem;
+  editor.setValue("");
+  renderTabs();
+}
+
+function closeTab(i) {
+  if (tabs.length <= 1) { tabs[0] = { name: "untitled.mms", content: "", stem: "untitled" }; activeTab = 0; currentStem = "untitled"; editor.setValue(""); renderTabs(); return; }
+  saveActiveTab();
+  tabs.splice(i, 1);
+  if (activeTab >= tabs.length) activeTab = tabs.length - 1;
+  if (activeTab < 0) activeTab = 0;
+  currentStem = tabs[activeTab].stem;
+  editor.setValue(tabs[activeTab].content);
+  renderTabs();
+}
+
 async function assemble() {
   const src = editor.getValue();
   const stem = currentStem;
@@ -202,6 +260,7 @@ async function boot() {
     }
   };
   $("examples").onchange = () => loadExample($("examples").value);
+  $("btn-new-tab").onclick = () => newTab();
   // drag-and-drop .mms files into the editor
   const pane = $("editor-pane");
   pane.addEventListener("dragover", (e) => { e.preventDefault(); pane.classList.add("drag"); });
@@ -212,7 +271,11 @@ async function boot() {
     const f = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!f) return;
     currentStem = f.name.replace(/\.mms$/, "") || "prog";
-    editor.setValue(await f.text());
+    tabs[activeTab].name = f.name;
+    tabs[activeTab].stem = currentStem;
+    tabs[activeTab].content = await f.text();
+    editor.setValue(tabs[activeTab].content);
+    renderTabs();
     status("loaded " + f.name);
   });
   $("btn-assemble").onclick = assemble;
@@ -245,7 +308,8 @@ async function boot() {
   });
   editor.setValue("");
   const shared = decodeProgram(location.hash.slice(1));
-  if (shared) { editor.setValue(shared); currentStem = "shared"; }
+  if (shared) { editor.setValue(shared); currentStem = "shared"; tabs[0].content = shared; tabs[0].name = "shared.mms"; tabs[0].stem = "shared"; }
+  renderTabs();
   window.loadExample = loadExample;
   try {
     await loadScript("wasm/mmixal.js");
@@ -335,8 +399,11 @@ async function loadExample(name) {
       const res = await fetch(dir + "/" + name);
       if (!res.ok) continue;
       currentStem = name.replace(/\.mms$/, "");
-      editor.setValue(await res.text());
-      console.log("loaded", name, "stem", currentStem, "from", dir);
+      tabs[activeTab].name = name;
+      tabs[activeTab].stem = currentStem;
+      tabs[activeTab].content = await res.text();
+      editor.setValue(tabs[activeTab].content);
+      renderTabs();
       return;
     } catch (e) { /* try next dir */ }
   }

@@ -55,12 +55,34 @@ main {
   flex-direction: column;
 }
 #editor-pane { border-right: 1px solid var(--border); }
-.CodeMirror {
-  height: 100%;
-  font: 14px/1.45 Consolas, monospace;
-  background: var(--bg);
-  color: var(--fg);
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  min-height: 28px;
 }
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #9aa0a8;
+  font: 12px Consolas, monospace;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab.active { background: var(--panel); color: var(--fg); border-color: var(--accent); }
+.tab .close { cursor: pointer; color: #6b7280; font-weight: bold; }
+.tab .close:hover { color: #ff7b72; }
+#btn-new-tab { background: var(--panel); border: 1px solid var(--border); color: var(--accent); padding: 2px 8px; font-size: 14px; border-radius: 4px; cursor: pointer; }
+.CodeMirror { height: calc(100% - 36px); }
 .CodeMirror-gutters { background: var(--panel) !important; border-right: 1px solid var(--border); }
 .CodeMirror-linenumber { color: #6b7280; }
 .CodeMirror-gutter.errors { width: 14px; }
