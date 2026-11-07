@@ -310,6 +310,14 @@ async function boot() {
   const shared = decodeProgram(location.hash.slice(1));
   if (shared) { editor.setValue(shared); currentStem = "shared"; tabs[0].content = shared; tabs[0].name = "shared.mms"; tabs[0].stem = "shared"; }
   renderTabs();
+  applyTheme(localStorage.getItem("mmix-theme") === "light");
+  $("btn-theme").onclick = () => applyTheme(!document.documentElement.classList.contains("light"));
+  let autoTimer = null;
+  editor.on("change", () => {
+    if (!$("opt-autorun").checked) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => { assemble().then(() => { if (currentMmo) run(); }); }, 900);
+  });
   window.loadExample = loadExample;
   try {
     await loadScript("wasm/mmixal.js");
@@ -358,6 +366,11 @@ function updateHash() {
   const enc = encodeProgram(src);
   if (!enc) return;
   try { history.replaceState(null, "", "#" + enc); } catch (e) {}
+}
+
+function applyTheme(light) {
+  document.documentElement.classList.toggle("light", light);
+  try { localStorage.setItem("mmix-theme", light ? "light" : "dark"); } catch (e) {}
 }
 
 function hex64(h, l) {

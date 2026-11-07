@@ -7,6 +7,13 @@
   font-family: system-ui, sans-serif;
   color: var(--fg);
 }
+html.light {
+  --bg: #ffffff;
+  --fg: #24292f;
+  --accent: #0969da;
+  --panel: #f6f8fa;
+  --border: #d0d7de;
+}
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
@@ -93,7 +100,10 @@ main {
 .cm-s-default .cm-comment { color: #6b7280; font-style: italic; }
 .cm-s-default .cm-string { color: #a5d6ff; }
 .cm-s-default .cm-number { color: #79c0ff; }
-.cm-s-default .cm-variable-2 { color: #ffa657; }
+html.light .cm-s-default .cm-comment { color: #6a737d; font-style: italic; }
+html.light .cm-s-default .cm-string { color: #0a3069; }
+html.light .cm-s-default .cm-number { color: #0550ae; }
+html.light .cm-s-default .cm-variable-2 { color: #953800; }
 .pane-label {
   padding: 6px 12px;
   font-size: 11px;
