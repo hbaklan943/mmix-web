@@ -125,7 +125,16 @@ async function run() {
   status("running…");
   $("btn-run").disabled = true;
   try {
-    const { stdout, stderr, module: M } = await runTool(MMIX, ["mmix", "-q", stem], [
+    const trace = $("opt-trace").checked;
+    const profile = $("opt-profile").checked;
+    const stats = $("opt-stats").checked;
+    const args = ["mmix"];
+    if (!trace && !profile && !stats) args.push("-q");
+    if (trace) { args.push("-t", "1000000", "-l", "5"); }
+    if (profile) args.push("-P");
+    if (stats) args.push("-s");
+    args.push(stem);
+    const { stdout, stderr, module: M } = await runTool(MMIX, args, [
       { name: stem + ".mmo", data: currentMmo },
     ], null, $("stdin").value);
     appendTo(simOut, stdout, "");

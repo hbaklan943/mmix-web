@@ -39,7 +39,8 @@ button {
   font: inherit;
 }
 button:disabled { opacity: 0.4; cursor: default; }
-#status { font-size: 13px; color: #9aa0a8; }
+.opt { font-size: 12px; color: #9aa0a8; display: inline-flex; align-items: center; gap: 4px; }
+.opt input { accent-color: var(--accent); }
 #status.error { color: #ff7b72; }
 
 main {
