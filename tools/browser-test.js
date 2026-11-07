@@ -140,24 +140,32 @@ async function evalJS(cdp, expr) {
 
   // 3) assemble+run each example (default: quick subset; pass "full" to include primes/sort)
   const examples = process.argv[2] === "full"
-    ? ["hello", "fib", "primes", "sort"]
-    : ["hello", "fib"];
+    ? [{ name: "stdin-demo.mms", stdin: "hello from stdin", expect: "hello from stdin" },
+       { name: "hello.mms", expect: "hello, world" },
+       { name: "fib.mms" },
+       { name: "primes.mms", expect: "First Five Hundred Primes" },
+       { name: "sort.mms" }]
+    : [{ name: "stdin-demo.mms", stdin: "hello from stdin", expect: "hello from stdin" },
+       { name: "hello.mms", expect: "hello, world" },
+       { name: "fib.mms" }];
   for (const ex of examples) {
-    await evalJS(cdp, `"${ex}" && (document.getElementById('examples').value = "${ex}.mms") && document.getElementById('examples').onchange()`);
+    await evalJS(cdp, `document.getElementById('examples').value = "${ex.name}"; document.getElementById('examples').onchange()`);
     await sleep(700); // fetch + editor fill
+    if (ex.stdin) await evalJS(cdp, `document.getElementById('stdin').value = "${ex.stdin}"`);
     await evalJS(cdp, "document.getElementById('btn-assemble').click()");
-    await waitFor("/Ready|error/.test(document.getElementById('status').textContent)", "assemble done (" + ex + ")", 30000);
+    await waitFor("/Ready|error/.test(document.getElementById('status').textContent)", "assemble done (" + ex.name + ")", 30000);
     const st = await evalJS(cdp, "document.getElementById('status').textContent");
     const asm = (await evalJS(cdp, "document.getElementById('asm-output').textContent")).trim();
-    if (/error/.test(st)) fail(`assemble ${ex}: ${st}\n${asm}`);
+    if (/error/.test(st)) fail(`assemble ${ex.name}: ${st}\n${asm}`);
     await evalJS(cdp, "document.getElementById('btn-run').click()");
     // wait for run to complete: status becomes "done" (possibly without stdout)
-    await waitFor("/done|error|aborted/.test(document.getElementById('status').textContent)", "run done (" + ex + ")", 60000);
+    await waitFor("/done|error|aborted/.test(document.getElementById('status').textContent)", "run done (" + ex.name + ")", 60000);
     const runSt = await evalJS(cdp, "document.getElementById('status').textContent");
     const sim = (await evalJS(cdp, "document.getElementById('sim-output').textContent")).trim();
-    console.log(`[${ex}] status=${runSt}`);
+    console.log(`[${ex.name}] status=${runSt}`);
     console.log(sim ? sim.split("\n").slice(0, 4).join(" ⏎ ") : "(no stdout)");
-    if (/error|aborted/.test(runSt)) fail(`run ${ex}: ${runSt}`);
+    if (/error|aborted/.test(runSt)) fail(`run ${ex.name}: ${runSt}`);
+    if (ex.expect && !sim.includes(ex.expect)) fail(`${ex.name}: expected "${ex.expect}" in output`);
   }
 
   const errors = consoleMsgs.filter((m) => /error|exception/i.test(m) && !/withdraw/i.test(m));

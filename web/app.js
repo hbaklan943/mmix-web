@@ -4,7 +4,7 @@
 
 const $ = (id) => document.getElementById(id);
 
-const EXAMPLES = ["hello.mms", "fib.mms", "primes.mms", "sort.mms", "inout.mms", "echo.mms"];
+const EXAMPLES = ["stdin-demo.mms", "hello.mms", "fib.mms", "primes.mms", "sort.mms", "inout.mms", "echo.mms"];
 
 let MMIXAL = null; // initMmixal constructor from wasm/mmixal.js
 let MMIX = null;   // initMmix constructor from wasm/mmix.js
@@ -31,14 +31,19 @@ function status(text, isError) {
 /* ---------- wasm module driver ---------- */
 /* Runs one tool pristine each time. files: [{name, data, opts}].
    Returns { stdout, stderr, rc, FS } */
-function runTool(Init, args, files, onOut) {
+function runTool(Init, args, files, onOut, stdinText) {
   return new Promise((resolve, reject) => {
     let stdout = "";
     let stderr = "";
+    const stdinBytes = stdinText ? new TextEncoder().encode(stdinText) : null;
+    let stdinPos = 0;
     Init({
       noInitialRun: true,
       thisProgram: args[0],
       arguments: args.slice(1),
+      stdin: stdinBytes
+        ? () => (stdinPos < stdinBytes.length ? stdinBytes[stdinPos++] : null)
+        : undefined,
       print: (t) => { stdout += t + "\n"; if (onOut) onOut(t + "\n"); },
       printErr: (t) => { stderr += t + "\n"; },
       onAbort: (what) => reject(new Error(what ? String(what) : "abort")),
@@ -81,9 +86,9 @@ async function assemble() {
   asmOut.__cls = "";
   status("assembling…");
   try {
-    const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", stem + ".mms"], [
+    const { stdout, stderr, FS } = await runTool(MMIXAL, ["mmixal", "-x", "-b", "250", stem + ".mms"], [
       { name: stem + ".mms", data: src, opts: { encoding: "utf8" } },
-    ]);
+    ], null, $("stdin").value);
     appendTo(asmOut, stderr + stdout, stderr.trim() ? "err" : "");
     let mmo = null;
     try {
@@ -114,7 +119,7 @@ async function run() {
   try {
     const { stdout, stderr } = await runTool(MMIX, ["mmix", "-q", stem], [
       { name: stem + ".mmo", data: currentMmo },
-    ]);
+    ], null, $("stdin").value);
     appendTo(simOut, stdout, "");
     if (stderr.trim()) appendTo(simOut, stderr, "err");
     status("done");
@@ -170,14 +175,17 @@ async function boot() {
 }
 
 async function loadExample(name) {
-  try {
-    currentStem = name.replace(/\.mms$/, "");
-    const res = await fetch("../vendor/" + name);
-    $("editor").value = await res.text();
-  } catch (e) {
-    currentStem = "prog";
-    status("cannot load " + name, true);
+  for (const dir of ["examples", "../vendor"]) {
+    try {
+      const res = await fetch(dir + "/" + name);
+      if (!res.ok) continue;
+      currentStem = name.replace(/\.mms$/, "");
+      $("editor").value = await res.text();
+      return;
+    } catch (e) { /* try next dir */ }
   }
+  currentStem = "prog";
+  status("cannot load " + name, true);
 }
 
 boot();
