@@ -10,126 +10,166 @@
 </head>
 <body>
 <header>
-  <h1>MMIX</h1>
+  <h1 class="logo" title="MMIX"><span>M</span>MIX</h1>
   <div class="toolbar">
-    <select id="examples" title="Example programs"></select>
-    <button id="btn-assemble" disabled>Assemble</button>
-    <button id="btn-run" disabled>Run</button>
-    <button id="btn-download-mmo" disabled title="Download .mmo object file">.mmo</button>
-    <button id="btn-download-lst" disabled title="Download assembly listing">.lst</button>
-    <button id="btn-share" disabled>Share</button>
-    <label class="opt"><input type="checkbox" id="opt-trace"> Trace</label>
-    <label class="opt"><input type="checkbox" id="opt-profile"> Profile</label>
-    <label class="opt"><input type="checkbox" id="opt-stats"> Stats</label>
-    <button id="btn-theme" title="Toggle theme">Theme</button>
-    <label class="opt"><input type="checkbox" id="opt-autorun"> Auto-run</label>
+    <div class="tb-group">
+      <select id="examples" title="Open an example program"></select>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <button id="btn-assemble" class="tb-btn" disabled title="Assemble (Ctrl+Enter)"><span class="ico ico-asm"></span>Assemble</button>
+      <button id="btn-run" class="tb-btn" disabled title="Assemble if needed, then run (F5 / Ctrl+Shift+Enter)"><span class="ico ico-run"></span>Run</button>
+      <button id="btn-stop" class="tb-btn" disabled title="Stop the running program (Shift+F5)"><span class="ico ico-stop"></span>Stop</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group" id="debug-group">
+      <button id="btn-debug" class="tb-btn" disabled title="Start debugging: pause at the first instruction"><svg class="svg-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6.3l2.6 1.4M14 6.3l-2.6 1.4M1.6 10h2.8M14.4 10h-2.8M2.4 14l2.4-1.7M13.6 14l-2.4-1.7" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><ellipse cx="8" cy="9.6" rx="3.7" ry="4.5" fill="#e08a00"/><circle cx="8" cy="4.1" r="2.3" fill="#a35f00"/><path d="M8 6.2v7.8" stroke="#6b3d00" stroke-width="0.9"/></svg>Debug</button>
+      <button id="btn-continue" class="tb-btn" disabled title="Continue to the next breakpoint (F8, or F5 while debugging)"><svg class="svg-ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="2.3" height="11" rx="0.6" fill="currentColor"/><path d="M6.4 2.5l7.6 5.5-7.6 5.5z" fill="#22a822"/></svg>Continue</button>
+      <button id="btn-break" class="tb-btn icon-only" disabled title="Break: pause the running program (F6)" aria-label="Break"><svg class="svg-ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.3" y="2.5" width="3.2" height="11" rx="0.8" fill="#e08a00"/><rect x="9.5" y="2.5" width="3.2" height="11" rx="0.8" fill="#e08a00"/></svg></button>
+      <button id="btn-step" class="tb-btn icon-only" disabled title="Step into: execute one instruction (F11 or F7)" aria-label="Step into"><svg class="svg-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5v8.2M4.7 6.6L8 9.9l3.3-3.3" stroke="#2361d8" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="13.4" r="1.9" fill="currentColor"/></svg></button>
+      <button id="btn-over" class="tb-btn icon-only" disabled title="Step over: run a PUSHJ/PUSHGO call as one step (F10)" aria-label="Step over"><svg class="svg-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.4 9.6a5.6 5.6 0 0 1 10.7-2.4" stroke="#2361d8" stroke-width="1.9" fill="none" stroke-linecap="round"/><path d="M13.7 3.4l-.5 4-3.9-1.1" stroke="#2361d8" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="13.4" r="1.9" fill="currentColor"/></svg></button>
+      <button id="btn-out" class="tb-btn icon-only" disabled title="Step out: run until the current subroutine returns (Shift+F11)" aria-label="Step out"><svg class="svg-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10.6V2.4M4.7 5.6L8 2.3l3.3 3.3" stroke="#2361d8" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="13.4" r="1.9" fill="currentColor"/></svg></button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <button id="btn-download-mmo" class="tb-btn" disabled title="Download .mmo object file"><span class="ico ico-save"></span>.mmo</button>
+      <button id="btn-download-lst" class="tb-btn" disabled title="Download assembly listing"><span class="ico ico-save"></span>.lst</button>
+      <button id="btn-share" class="tb-btn" disabled title="Copy a link that contains this program"><span class="ico ico-share"></span>Share</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group opts">
+      <label class="opt" title="Trace every instruction (mmix -t)"><input type="checkbox" id="opt-trace"> Trace</label>
+      <label class="opt" title="Print an execution profile (mmix -P)"><input type="checkbox" id="opt-profile"> Profile</label>
+      <label class="opt" title="Print running statistics (mmix -s)"><input type="checkbox" id="opt-stats"> Stats</label>
+      <label class="opt" title="Assemble and run automatically while typing"><input type="checkbox" id="opt-autorun"> Auto-run</label>
+    </div>
+    <span class="tb-spacer"></span>
     <span id="status"></span>
+    <div class="menu-wrap">
+      <button id="btn-view" class="tb-btn" title="Show or hide panels, reset the layout" aria-haspopup="true" aria-expanded="false">View ▾</button>
+      <div id="view-menu" class="menu" role="menu" hidden></div>
+    </div>
+    <button id="btn-theme" class="tb-btn" title="Toggle light / dark theme">Theme</button>
+    <button id="btn-help" class="tb-btn help-btn" title="Help: guide, instruction reference, shortcuts (F1)" aria-label="Help">?</button>
   </div>
 </header>
-<main id="app-main">
-  <!-- Top Split Area: Editor (Left) & Registers (Right) -->
-  <div id="top-area">
-    <section id="editor-pane">
-      <div id="tab-bar" class="tab-bar">
-        <button id="btn-new-tab" title="New tab">+</button>
-      </div>
+
+<!-- The dock renders the layout here; panels below are moved in at runtime. -->
+<main id="dock-root"></main>
+
+<!-- Panel store: every dockable panel lives here until the dock places it. -->
+<div id="panel-store" hidden>
+
+  <section class="panel" id="panel-editor" data-title="Editor">
+    <div id="tab-bar" class="tab-bar">
+      <button id="btn-new-tab" title="New file">+</button>
+      <span id="editor-tools" class="editor-tools">
+        <button id="btn-open" class="mini-btn" title="Open a .mms file from your computer (Ctrl+O)">Open…</button>
+        <input type="file" id="open-input" accept=".mms,.txt,text/plain" hidden>
+        <span class="seg" role="group" aria-label="Editor font size">
+          <button id="btn-font-down" class="mini-btn" title="Smaller font (Ctrl+−)" aria-label="Smaller font">A−</button>
+          <span id="editor-font-size" class="font-size-label" title="Editor font size (Ctrl+0 resets)">16</span>
+          <button id="btn-font-up" class="mini-btn" title="Larger font (Ctrl++)" aria-label="Larger font">A+</button>
+        </span>
+        <button id="btn-format" class="mini-btn" title="Format: line up labels, instructions, operands and comments (Shift+Alt+F)">Format</button>
+      </span>
+    </div>
+    <div id="editor-host" class="editor-host">
       <textarea id="editor" spellcheck="false" placeholder="Loading editor…"></textarea>
-    </section>
-
-    <!-- Resizable Vertical Splitter -->
-    <div id="v-splitter" class="splitter v-splitter" title="Drag left/right to resize"></div>
-
-    <!-- MMIXVD-style Registers Pane -->
-    <section id="regs-pane">
-      <div class="panel-header">
-        <span class="panel-title">REGISTERS</span>
-        <div class="reg-tools">
-          <button id="btn-reg-hex" class="mini-btn active" title="Display in Hexadecimal">Hex</button>
-          <button id="btn-reg-dec" class="mini-btn" title="Display in Decimal">Dec</button>
-          <button id="btn-reg-filter" class="mini-btn active" title="Show only non-zero / active registers">Active Only</button>
-        </div>
-      </div>
-      <!-- Hidden pre to keep 100% backward compatibility with test runners -->
-      <pre id="reg-output" class="hidden-compat"></pre>
-      <div id="regs-list" class="regs-list">
-        <div class="regs-empty">Registers will populate after simulation run.</div>
-      </div>
-    </section>
-  </div>
-
-  <!-- Resizable Horizontal Splitter -->
-  <div id="h-splitter" class="splitter h-splitter" title="Drag up/down to resize"></div>
-
-  <!-- Bottom Area: MMIXVD Multi-Tab Inspector -->
-  <section id="bottom-pane">
-    <div class="bottom-tabs-bar">
-      <button class="bottom-tab active" data-tab="tab-sim">🖥️ Simulator Output <span id="sim-badge" class="badge"></span></button>
-      <button class="bottom-tab" data-tab="tab-speicher">🧠 Speicher (Memory)</button>
-      <button class="bottom-tab" data-tab="tab-asm">📋 Assembler Messages <span id="asm-badge" class="badge"></span></button>
-      <button class="bottom-tab" data-tab="tab-stdin">📥 Program Input (stdin)</button>
-      <button class="bottom-tab" data-tab="tab-files">📁 Files (Virtual FS)</button>
-    </div>
-
-    <!-- Tab 1: Simulator Output -->
-    <div id="tab-sim" class="bottom-tab-content active">
-      <div id="sim-output" class="console"></div>
-    </div>
-
-    <!-- Tab 2: Speicher (Memory Inspector) -->
-    <div id="tab-speicher" class="bottom-tab-content">
-      <div class="speicher-toolbar">
-        <div class="speicher-nav">
-          <label class="speicher-label">Go to:
-            <input id="mem-addr" spellcheck="false" placeholder="0x0000000000000100" value="0x0000000000000100">
-          </label>
-          <button id="btn-mem">Go</button>
-          <button id="btn-mem-prev" title="Previous 64 bytes">◀ -64B</button>
-          <button id="btn-mem-next" title="Next 64 bytes">+64B ▶</button>
-        </div>
-        <div class="speicher-presets">
-          <span class="label">Presets:</span>
-          <button class="preset-btn" data-addr="0x100">Code (#100)</button>
-          <button class="preset-btn" data-addr="0x2000000000000000">Data_Segment</button>
-          <button class="preset-btn" data-addr="0x4000000000000000">Pool</button>
-          <button class="preset-btn" data-addr="0x6000000000000000">Stack</button>
-        </div>
-        <div class="speicher-modes">
-          <button id="btn-mem-mode-hexascii" class="mini-btn active">Hex + ASCII</button>
-          <button id="btn-mem-mode-ascii" class="mini-btn">ASCII</button>
-          <button id="btn-mem-mode-octa" class="mini-btn">OCTA</button>
-        </div>
-        <span id="mem-result" class="mem-status"></span>
-      </div>
-      <div id="speicher-dump" class="speicher-dump">
-        <div class="speicher-empty">Simülasyon çalıştırıldığında bellek görüntülenecektir.</div>
-      </div>
-    </div>
-
-    <!-- Tab 3: Assembler Messages -->
-    <div id="tab-asm" class="bottom-tab-content">
-      <div id="asm-output" class="console"></div>
-    </div>
-
-    <!-- Tab 4: Program Input (stdin) -->
-    <div id="tab-stdin" class="bottom-tab-content">
-      <div class="stdin-helper">
-        <span>Programınız standart girdiden okuma yapıyorsa (ör. <code>TRAP 0,Fgets,StdIn</code> veya <code>stdin-demo.mms</code>), girdiyi buraya yazın. Program çalıştırıldığında bu girdi aktarılır:</span>
-      </div>
-      <textarea id="stdin" spellcheck="false" placeholder="Program standart girdisi (stdin) — Örn: hello from stdin"></textarea>
-    </div>
-
-    <!-- Tab 5: Virtual FS Files -->
-    <div id="tab-files" class="bottom-tab-content">
-      <div class="files-helper">
-        <span>Sanal dosya sistemine dosya yükleyin veya programın ürettiği dosyaları indirin:</span>
-        <input type="file" id="file-upload" multiple>
-      </div>
-      <div id="file-list" class="console"></div>
     </div>
   </section>
-</main>
+
+  <section class="panel regs-panel" id="panel-regs-local" data-title="Local Registers" data-regs="local"></section>
+  <section class="panel regs-panel" id="panel-regs-global" data-title="Global Registers" data-regs="global"></section>
+  <section class="panel regs-panel" id="panel-regs-special" data-title="Special Registers" data-regs="special"></section>
+
+  <section class="panel" id="panel-output" data-title="Output" data-badge="sim-badge">
+    <div id="sim-output" class="console"></div>
+  </section>
+
+  <section class="panel" id="panel-asm" data-title="Assembler" data-badge="asm-badge">
+    <div id="asm-output" class="console"></div>
+  </section>
+
+  <section class="panel" id="panel-input" data-title="Input">
+    <div class="strip">
+      <span class="strip-hint">Standard input for the program (read with <code>TRAP 0,Fgets,StdIn</code>)</span>
+      <button id="btn-stdin-clear" class="mini-btn" title="Clear the input">Clear</button>
+    </div>
+    <textarea id="stdin" spellcheck="false" placeholder="Text the program reads from stdin, e.g. hello from stdin"></textarea>
+  </section>
+
+  <section class="panel" id="panel-memory" data-title="Memory">
+    <div class="speicher-toolbar">
+      <label class="speicher-label">Go to:
+        <input id="mem-addr" spellcheck="false" placeholder="0x0000000000000100" value="0x0000000000000100" title="Address (#hex, 0xhex or decimal), a segment name (Text, Data, Pool, Stack) or a label from your program">
+      </label>
+      <button id="btn-mem" class="mini-btn">Go</button>
+      <div class="seg">
+        <button id="btn-mem-prev" class="mini-btn" title="Previous page">◀</button>
+        <button id="btn-mem-next" class="mini-btn" title="Next page">▶</button>
+      </div>
+      <div class="seg">
+        <button class="mini-btn preset-btn" data-addr="0x100" title="Text segment (program code), from #100">Text</button>
+        <button class="mini-btn preset-btn" data-addr="0x2000000000000000" title="Data_Segment #2000000000000000">Data</button>
+        <button class="mini-btn preset-btn" data-addr="0x4000000000000000" title="Pool_Segment #4000000000000000">Pool</button>
+        <button class="mini-btn preset-btn" data-addr="0x6000000000000000" title="Stack_Segment #6000000000000000">Stack</button>
+      </div>
+      <div class="seg">
+        <button id="btn-mem-mode-hexascii" class="mini-btn active">Hex+ASCII</button>
+        <button id="btn-mem-mode-ascii" class="mini-btn">ASCII</button>
+        <button id="btn-mem-mode-octa" class="mini-btn">OCTA</button>
+      </div>
+      <span id="mem-result" class="mem-status"></span>
+    </div>
+    <div id="speicher-dump" class="speicher-dump">
+      <div class="speicher-empty">Memory is shown here after the program runs.</div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-breakpoints" data-title="Breakpoints">
+    <div class="strip">
+      <span class="strip-hint">Click left of a line number (or F9) to toggle. Ctrl+F10 runs to the cursor.</span>
+      <button id="btn-bp-clear" class="mini-btn" title="Remove all breakpoints in this file">Clear all</button>
+    </div>
+    <div id="bp-list" class="bp-list"></div>
+  </section>
+
+  <section class="panel" id="panel-symbols" data-title="Symbols">
+    <div class="strip">
+      <span class="strip-hint">Labels and constants from the last assemble. Click one to find it in the source and in Memory.</span>
+    </div>
+    <div id="symbol-list" class="bp-list"><div class="regs-empty">Assemble the program to see its symbol table.</div></div>
+  </section>
+
+  <section class="panel" id="panel-help" data-title="Help" data-default-hidden="1" data-dock-split="panel-editor:right">
+    <div id="help-content" class="help-host"></div>
+  </section>
+
+  <section class="panel" id="panel-files" data-title="Files">
+    <div class="files-helper">
+      <span><b>Data files</b> for your program: it can read them with <code>TRAP 0,Fopen,…</code>, and files it writes can be downloaded here.
+      To open a <code>.mms</code> source in the editor, use <b>Open</b> (Ctrl+O) above the editor.</span>
+      <input type="file" id="file-upload" multiple>
+    </div>
+    <div id="file-list" class="console"></div>
+  </section>
+
+  <!-- Hidden plain-text register dump, read by tools/browser-test.js -->
+  <pre id="reg-output" class="hidden-compat"></pre>
+  <span id="sim-badge" class="badge"></span>
+  <span id="asm-badge" class="badge"></span>
+</div>
+
+<div id="dock-overlay" class="dock-overlay" hidden></div>
+<div id="dock-ghost" class="dock-ghost" hidden></div>
+
 <script src="vendor/codemirror/codemirror.min.js"></script>
 <script src="vendor/codemirror/simple.min.js"></script>
+<script src="dock.js"></script>
+<script src="help.js"></script>
+<!-- sim-worker.js (loaded by app.js as a Web Worker) runs mmixal + mmix -->
+
 <script src="app.js"></script>
 </body>
 </html>

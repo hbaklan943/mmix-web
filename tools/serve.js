@@ -21,7 +21,9 @@ http
   .createServer((req, res) => {
     const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
     let file = path.normalize(path.join(root, urlPath));
-    if (!file.startsWith(root)) {
+    // path.relative, not startsWith: "mmix-web-old" starts with "mmix-web" too
+    const rel = path.relative(root, file);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
       res.writeHead(403).end("forbidden");
       return;
     }
@@ -34,6 +36,9 @@ http
       }
       res.writeHead(200, {
         "Content-Type": types[path.extname(file)] || "application/octet-stream",
+        // Development server: always revalidate, so edits show up on reload
+        // instead of the browser reusing stale app.js / style.css.
+        "Cache-Control": "no-cache",
       });
       res.end(data);
     });

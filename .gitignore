@@ -23,3 +23,6 @@ vendor/*.run
 # node
 node_modules/
 docs/.vercel/
+
+# local Claude Code settings (preview server config)
+.claude/

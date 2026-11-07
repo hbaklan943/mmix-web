@@ -1,4 +1,5 @@
 # Produce a self-contained static bundle in docs\ (GitHub Pages serves /docs on master).
+# docs\ is generated: edit web\ and run this script (-SkipWasm reuses web\wasm).
 param([switch]$SkipWasm)
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent

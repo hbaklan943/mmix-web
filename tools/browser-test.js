@@ -10,7 +10,8 @@ const path = require("path");
 const fs = require("fs");
 
 const PORT = 9333;
-const URL_BASE = process.argv[3] || "http://localhost:8642/web/index.html";
+// Start the dev server first: npm run serve
+const URL_BASE = process.argv[3] || "http://localhost:8080/web/index.html";
 
 function findBrowser() {
   const candidates = [
