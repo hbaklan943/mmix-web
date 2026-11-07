@@ -9,5 +9,8 @@ if (-not $SkipWasm) {
 }
 if (Test-Path $docs) { Remove-Item $docs -Recurse -Force }
 Copy-Item (Join-Path $repo "web") $docs -Recurse
+# vendor .mms examples are served from repo root in dev; mirror them into the bundle
+New-Item -ItemType Directory -Force (Join-Path $docs "vendor") | Out-Null
+Copy-Item (Join-Path $repo "vendor\*.mms") (Join-Path $docs "vendor") -Force
 New-Item -ItemType File -Path (Join-Path $docs ".nojekyll") -Force | Out-Null
 Write-Host "BUNDLE OK -> $docs (GitHub Pages: master /docs)"

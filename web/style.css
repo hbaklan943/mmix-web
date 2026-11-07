@@ -61,6 +61,8 @@ main {
   background: var(--bg);
   color: var(--fg);
 }
+.CodeMirror-gutters { background: var(--panel) !important; border-right: 1px solid var(--border); }
+.CodeMirror-linenumber { color: #6b7280; }
 #editor-pane.drag { outline: 2px dashed var(--accent); }
 .CodeMirror-linenumber { color: #6b7280; }
 .cm-s-default .cm-comment { color: #6b7280; font-style: italic; }
