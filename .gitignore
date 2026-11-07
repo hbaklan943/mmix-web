@@ -22,3 +22,4 @@ vendor/*.run
 
 # node
 node_modules/
+docs/.vercel/
