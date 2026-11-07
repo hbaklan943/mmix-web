@@ -1,5 +1,6 @@
 # artifacts
 build/
+dist/
 web/wasm/
 tools/ctangle.exe
 debug-page.png
