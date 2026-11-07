@@ -438,9 +438,45 @@ async function boot() {
     mode: "mmixal",
     lineNumbers: true,
     gutters: ["CodeMirror-linenumbers", "errors"],
-    tabSize: 2,
-    indentUnit: 2,
-    extraKeys: { "Ctrl-Enter": assemble, "Cmd-Enter": assemble },
+    tabSize: 8,
+    indentUnit: 8,
+    extraKeys: {
+      "Ctrl-Enter": assemble,
+      "Cmd-Enter": assemble,
+      Tab: (cm) => {
+        if (cm.somethingSelected()) {
+          cm.indentSelection("add");
+          return;
+        }
+        const cursor = cm.getCursor();
+        const col = cursor.ch;
+        // MMIXAL standard column stops: 8 (Opcode), 16 (Operands), 32 (Comment)
+        const STOPS = [8, 16, 32];
+        let target = STOPS.find((s) => s > col);
+        if (!target) target = Math.floor(col / 8 + 1) * 8;
+        cm.replaceSelection(" ".repeat(target - col));
+      },
+      "Shift-Tab": (cm) => {
+        if (cm.somethingSelected()) {
+          cm.indentSelection("subtract");
+          return;
+        }
+        const cursor = cm.getCursor();
+        const col = cursor.ch;
+        const line = cm.getLine(cursor.line);
+        const STOPS = [0, 8, 16, 32];
+        let prev = 0;
+        for (const s of STOPS) {
+          if (s < col) prev = s;
+        }
+        const prefix = line.slice(prev, col);
+        if (/^\s+$/.test(prefix)) {
+          cm.replaceRange("", { line: cursor.line, ch: prev }, cursor);
+        } else {
+          cm.setCursor({ line: cursor.line, ch: prev });
+        }
+      },
+    },
   });
   editor.setValue("");
 
