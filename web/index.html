@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mmix-web</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>MMIX</h1>
+  <div class="toolbar">
+    <select id="examples" title="example programs"></select>
+    <button id="btn-assemble" disabled>Assemble</button>
+    <button id="btn-run" disabled>Run</button>
+    <span id="status"></span>
+  </div>
+</header>
+<main>
+  <section id="editor-pane">
+    <textarea id="editor" spellcheck="false" placeholder="Loading editor…"></textarea>
+  </section>
+  <section id="side-pane">
+    <div class="pane-label">Assembler messages</div>
+    <div id="asm-output" class="console"></div>
+    <div class="pane-label">Simulator output</div>
+    <div id="sim-output" class="console"></div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
