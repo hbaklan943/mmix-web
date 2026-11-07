@@ -2,6 +2,7 @@
 build/
 web/wasm/
 tools/ctangle.exe
+debug-page.png
 tools/emsdk/
 
 # CWEB tangle outputs (regenerate with tools\build-*.ps1)
